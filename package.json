@@ -4,10 +4,13 @@
   "private": true,
   "description": "Shared LittleSteps HTTP API on Firebase Cloud Functions",
   "main": "lib/index.js",
-  "engines": { "node": "22" },
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
     "test": "vitest run test/app.test.ts",
     "test:auth-emulator": "vitest run test/auth-emulator.test.ts",
     "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth \"npm run test:auth-emulator\"",
@@ -23,13 +26,16 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.30",
     "@types/supertest": "^6.0.3",
+    "eslint": "^10.12.0",
     "firebase-tools": "^14.12.0",
     "supertest": "^7.1.4",
     "typescript": "^5.9.2",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^3.2.4"
   }
 }
