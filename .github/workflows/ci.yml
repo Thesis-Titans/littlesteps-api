@@ -17,7 +17,16 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - name: Test Firebase ID-token verification with Auth Emulator
+        run: npm run test:emulator
+        env:
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          GCLOUD_PROJECT: demo-littlesteps
