@@ -8,8 +8,9 @@ Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd g
 LittleSteps uses a three-tier documentation structure. System architecture, product scope, and privacy policies are maintained centrally in [`littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs):
 
 - [Developer Onboarding Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/getting-started.md): Full-stack local setup instructions.
+- [API Reference & Integration Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md): Canonical OpenAPI contract, Open Library REST integration, 3-tier AI fallback engine, and error envelopes.
 - [Product Scope](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/product-scope.md): The six core features and boundaries.
-- [Architecture Decisions](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/architecture-decisions.md): Architecture and technical direction.
+- [Architecture Decisions](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/architecture-decisions.md): Architecture and technical direction (ADRs 001–010).
 - [Security, Privacy, and AI Guardrails](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/security-privacy-ai.md): Data safeguards and child privacy principles.
 - [Documentation Standards](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/documentation-standards.md): Documentation hierarchy and repository consistency.
 
@@ -28,7 +29,7 @@ LittleSteps uses a three-tier documentation structure. System architecture, prod
 3. Run `npm run lint` to verify code style via ESLint.
 4. Run `npm run typecheck`, `npm run build`, and `npm test` for the fast unit-test baseline.
 5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication Emulator using the synthetic `demo-littlesteps` project.
-6. For interactive local development, run `npm run emulators`. Do not deploy to cloud environments during initial setup.
+6. For interactive local development, run `npm run emulators -- --project demo-littlesteps`. Do not deploy to cloud environments during initial setup.
 
 The Auth Emulator integration suite tests malformed/invalid tokens, emulator-issued ID tokens, and validates that the API derives the identity UID strictly from the verified token rather than client parameters.
 
@@ -38,10 +39,16 @@ The Auth Emulator integration suite tests malformed/invalid tokens, emulator-iss
 ---
 
 ## API Endpoints & Contract
-The technical contract is maintained in [`openapi/openapi.yaml`](openapi/openapi.yaml):
+The canonical interface specification is detailed in [`docs/api-reference.md`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md) and maintained locally in [`openapi/openapi.yaml`](openapi/openapi.yaml):
 
+### Baseline Scaffold Endpoints:
 - `GET /health` — public liveness health check.
 - `GET /api/v1/me` — requires `Authorization: Bearer <Firebase ID token>` and returns the verified UID.
+
+### Planned Feature & Integration Endpoints (Sprint 1):
+- `POST /api/v1/children` & `GET /api/v1/children` — Child profile management with server-side UID ownership scoping (BOLA 404 response on unauthorized access).
+- `GET /api/v1/catalog/books` — External Open Library REST API proxy with bounded query validation and child-safe tag filters.
+- `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
 ---
 
