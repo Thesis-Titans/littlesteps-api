@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run test/app.test.ts",
+    "test": "vitest run --exclude test/auth-emulator.test.ts",
     "test:auth-emulator": "vitest run test/auth-emulator.test.ts",
     "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth \"npm run test:auth-emulator\"",
     "test:watch": "vitest",
