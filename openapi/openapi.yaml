@@ -2,10 +2,16 @@ openapi: 3.1.0
 info:
   title: LittleSteps API
   version: 0.1.0
-  description: Initial contract scaffold. Feature endpoints are intentionally not yet specified.
+  description: >-
+    Health and identity endpoints are implemented. Child-profile operations are
+    a reviewable design contract for Issue 7, not implemented routes. Pending
+    decisions in docs/child-profile-contract.md must be resolved before Issue 8.
 servers:
   - url: http://127.0.0.1:5001/{projectId}/asia-southeast1/api
     description: Firebase Functions emulator; replace projectId with the local Firebase project ID.
+    variables:
+      projectId:
+        default: demo-littlesteps
 paths:
   /health:
     get:
@@ -41,8 +47,294 @@ paths:
                   uid:
                     type: string
         '401':
-          description: Missing or invalid Firebase ID token
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/children:
+    post:
+      operationId: createChild
+      summary: Create an owned child profile (design only)
+      description: >-
+        Proposed operation, not implemented. The server assigns a UUIDv4,
+        caregiverId from the verified token UID, and UTC timestamps. No
+        client-supplied identity establishes ownership. Birth input derivation
+        and direct-band behavior remain subject to the documented decision gate.
+      x-implementation-status: not-implemented
+      x-contract-status: proposed-pending-review
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChild'
+            examples:
+              birthMonth:
+                value: { nickname: Sample Child, birthMonthYear: '2025-08' }
+              bandOnly:
+                value: { nickname: Sample Child, ageBand: 12-23m }
+      responses:
+        '201':
+          description: Proposed created profile; contains no internal caregiver UID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildProfile'
+              examples:
+                created:
+                  $ref: '#/components/examples/Child'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    get:
+      operationId: listChildren
+      summary: List owned child profiles (design only)
+      description: >-
+        Proposed unpaginated JSON array for the first slice, not implemented.
+        Query only the verified UID's caregiver path; never list globally and
+        filter in the client. An account without children receives an empty array.
+        Pagination and ordering are not promised by this draft.
+      x-implementation-status: not-implemented
+      x-contract-status: proposed-pending-review
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owned profiles only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChildProfile'
+              examples:
+                empty:
+                  value: []
+                owned:
+                  value:
+                    - id: 6f1c344e-84a8-4e24-9d72-74739a8c1362
+                      nickname: Sample Child
+                      birthMonthYear: '2025-08'
+                      ageBand: 12-23m
+                      createdAt: '2026-10-29T08:00:00Z'
+                      updatedAt: '2026-10-29T08:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/children/{childId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4; never evidence of ownership.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getChild
+      summary: Read an owned child profile (design only)
+      description: >-
+        Not implemented. Resolve the ID within the verified UID's child path,
+        verify caregiverId matches that UID, and expose no profile until authorized.
+        Cross-owner substitution and nonexistent IDs have identical 404 responses.
+      x-implementation-status: not-implemented
+      x-contract-status: proposed-pending-review
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/OwnedChild'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+    patch:
+      operationId: updateChild
+      summary: Update an owned child profile (design only)
+      description: >-
+        Proposed partial update, not implemented. Only nickname edits are
+        specified in this draft; age-source switching, birth-month corrections,
+        recalculation and clearing behavior are PENDING DECISION. This is not a
+        product decision to forbid future age correction. Ownership, identifiers
+        and timestamps cannot be supplied or reassigned by the client.
+      x-implementation-status: not-implemented
+      x-contract-status: proposed-pending-review
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChild'
+            examples:
+              rename:
+                value: { nickname: Sample Sprout }
+      responses:
+        '200':
+          description: Proposed updated profile with server-assigned updatedAt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildProfile'
+              examples:
+                updated:
+                  value:
+                    id: 6f1c344e-84a8-4e24-9d72-74739a8c1362
+                    nickname: Sample Sprout
+                    birthMonthYear: '2025-08'
+                    ageBand: 12-23m
+                    createdAt: '2026-10-29T08:00:00Z'
+                    updatedAt: '2026-10-29T08:05:00Z'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
 components:
+  schemas:
+    ChildId:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    Nickname:
+      type: string
+      minLength: 1
+      maxLength: 50
+      pattern: '\S'
+      description: >-
+        Nickname only. Draft validation rejects whitespace-only values; no
+        trimming default is promised. Exact normalization needs review.
+    BirthMonthYear:
+      type: string
+      pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      description: >-
+        Coarse YYYY-MM, never an exact date. Semantic checks must reject future
+        months and ages outside 0-71 months. Clock/timezone and boundary policy
+        remain pending; this pattern alone does not establish a valid child age.
+    AgeBand:
+      type: string
+      enum: [0-5m, 6-11m, 12-23m, 24-35m, 36-47m, 48-59m, 60-71m]
+      description: Navigation categories, not clinical classifications.
+    CreateChild:
+      type: object
+      additionalProperties: false
+      required: [nickname]
+      properties:
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+        birthMonthYear:
+          $ref: '#/components/schemas/BirthMonthYear'
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+      oneOf:
+        - required: [birthMonthYear]
+        - required: [ageBand]
+      description: >-
+        Draft proposes exactly one age source. When birthMonthYear is given,
+        the server derives ageBand. Otherwise the caregiver selects a band.
+        No implicit defaults or null values. Input mode details need review.
+    UpdateChild:
+      type: object
+      additionalProperties: false
+      required: [nickname]
+      properties:
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+      description: Draft specifies rename only; age-edit behavior is blocked pending a decision.
+    ChildProfile:
+      type: object
+      additionalProperties: false
+      required: [id, nickname, ageBand, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ChildId'
+        nickname:
+          $ref: '#/components/schemas/Nickname'
+        birthMonthYear:
+          $ref: '#/components/schemas/BirthMonthYear'
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      description: >-
+        Proposed public projection; caregiverId is internal. Optional birth month
+        is omitted when not supplied. No nulls or implicit defaults. UTC timestamps
+        are serialized from internal Firestore timestamps. Age band is stored;
+        its refresh strategy when derived from birth month remains pending.
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+      description: Existing safe error envelope; never includes resource metadata or token details.
+  examples:
+    Child:
+      summary: Synthetic profile; age shown as of October 2026.
+      value:
+        id: 6f1c344e-84a8-4e24-9d72-74739a8c1362
+        nickname: Sample Child
+        birthMonthYear: '2025-08'
+        ageBand: 12-23m
+        createdAt: '2026-10-29T08:00:00Z'
+        updatedAt: '2026-10-29T08:00:00Z'
+  responses:
+    OwnedChild:
+      description: Proposed public projection of an owned child.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChildProfile'
+          examples:
+            owned:
+              $ref: '#/components/examples/Child'
+    Unauthenticated:
+      description: Missing, malformed, expired or invalid Firebase ID token. No verification details disclosed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              value: { error: { code: UNAUTHENTICATED, message: A valid bearer token is required } }
+            invalidOrExpired:
+              value: { error: { code: UNAUTHENTICATED, message: A valid bearer token is required } }
+    InvalidInput:
+      description: Proposed field or identifier validation failure, or existing malformed JSON error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidInput:
+              value: { error: { code: INVALID_INPUT, message: Request fields are invalid } }
+            invalidJson:
+              value: { error: { code: INVALID_JSON, message: Request body must be valid JSON } }
+    ChildNotFound:
+      description: Child missing from the caller's scope or not owned by the caller; identical response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingOrNotOwned:
+              value: { error: { code: NOT_FOUND, message: Resource not found } }
   securitySchemes:
     bearerAuth:
       type: http
