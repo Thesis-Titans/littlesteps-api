@@ -78,7 +78,8 @@ export const BooksResponseSchema = z.object({
 export type BooksResponse = z.infer<typeof BooksResponseSchema>;
 
 export const BooksQuerySchema = z.object({
-  subject: z.string().trim().min(1).default("picture_books").optional(),
+  // Fix #3: Bound subject length to prevent unbounded cache key growth from arbitrary subject inputs.
+  subject: z.string().trim().min(1).max(64).default("picture_books").optional(),
   limit: z.preprocess(
     (value) => (value !== undefined ? Number(value) : 12),
     z.number().int().min(1).max(30)

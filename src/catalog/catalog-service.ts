@@ -14,15 +14,35 @@ interface CacheEntry {
 }
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (per api-reference.md §5.1)
+// Fix #3: Cap cache at 100 entries to bound memory under unauthenticated arbitrary subject queries.
+const CACHE_MAX_ENTRIES = 100;
 const booksCache = new Map<string, CacheEntry>();
 
+// Fix #1: Synthetic fixture files are engineering-only content and must NEVER be
+// presented as reviewed_approved, even if someone accidentally edits the status field.
+// This guard enforces that constraint at startup so any mistake is caught immediately.
 function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
   return activities.map((item) => {
     const validated = CatalogActivitySchema.parse(item);
-    // Explicit guard: draft or unreviewed content cannot be marked approved
-    if (validated.status !== "reviewed_approved" && validated.status !== "synthetic_fixture") {
-      throw new Error(`Invalid catalog item status for ${validated.id}: ${validated.status}`);
+
+    // Synthetic fixtures file is exclusively for engineering tests.
+    // Throw at startup if any item claims reviewed_approved without real
+    // subject-matter review sign-off (see philippine-content-provenance.md §6).
+    if (validated.status === "reviewed_approved") {
+      throw new Error(
+        `Content gating violation: fixture item '${validated.id}' claims ` +
+        `'reviewed_approved' status but this file is reserved for synthetic_fixture items. ` +
+        `Real approved content requires a completed provenance record and expert sign-off (Docs Issue #3).`
+      );
     }
+
+    if (validated.status !== "synthetic_fixture") {
+      throw new Error(
+        `Invalid catalog item status for '${validated.id}': '${validated.status}'. ` +
+        `Fixture items must have status 'synthetic_fixture'.`
+      );
+    }
+
     return validated;
   });
 }
@@ -118,11 +138,17 @@ export async function getBooksCatalog(
       totalCount: data.work_count ?? books.length,
       books,
       provenance: {
+        // Fix #2: Open Library metadata is CC0; individual books may be copyrighted.
         source: "Open Library (Internet Archive)",
-        license: "Public Domain / Open Access"
+        license: "Metadata: Open Library, CC0"
       }
     };
 
+    // Fix #3: Evict the oldest cache entry when the map exceeds the size cap.
+    if (booksCache.size >= CACHE_MAX_ENTRIES) {
+      const oldestKey = booksCache.keys().next().value;
+      if (oldestKey !== undefined) booksCache.delete(oldestKey);
+    }
     booksCache.set(cacheKey, { timestamp: now, data: result });
     return { response: result, fromCache: false };
   } catch {
@@ -133,8 +159,9 @@ export async function getBooksCatalog(
       totalCount: slicedFallback.length,
       books: slicedFallback,
       provenance: {
+        // Fix #2: Same CC0 correction for the fallback path.
         source: "local-fallback",
-        license: "Public Domain / Curated Academic Fixture"
+        license: "Metadata: Open Library, CC0"
       }
     };
 
