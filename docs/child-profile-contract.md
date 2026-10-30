@@ -22,7 +22,7 @@ Child deletion and rate limiting are not implemented.
 | API field | Internal field/type | Required in record | Constraints and rationale |
 |---|---|---|---|
 | `id` | `id`: string; document ID | Yes | Server-generated lowercase UUIDv4; stable lookup key, never proof of ownership. |
-| `nickname` | `name`: string | Yes | 1-50 characters, not whitespace-only; supports child selection without requiring a full name. |
+| `nickname` | `name`: string | Yes | 1-50 characters (counted as Unicode code points after normalization), not whitespace-only, no Unicode control or format characters; supports child selection without requiring a full name. |
 | `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM` (ISO 8601 reduced-precision calendar month); coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
 | `ageBand` | `ageBand`: enum string | Yes | Navigation category. Derived on read from `birthMonth` when present (not trusted from storage); otherwise the stored caregiver-selected band. |
 | Not exposed | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
