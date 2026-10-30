@@ -118,7 +118,7 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
-| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range or 20-child limit reached; 503 transient conflict while creating, retry after a moment |
+| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 413 body over 100 KB; 422 age out of range or 20-child limit reached; 503 transient conflict while creating, retry after a moment |
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
 | `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range; 503 transient conflict while updating, retry after a moment |
@@ -136,6 +136,7 @@ Any endpoint may return `429 RATE_LIMITED` with `Retry-After: <delay-seconds>`
 (RFC 6585 section 4, RFC 9110 section 10.2.3); clients should back off for that
 many seconds. Limits are per-IP and per-UID. Rate limiting is NOT implemented yet.
 `INVALID_INPUT` uses 400, matching the existing malformed-input status.
+A JSON body over 100 KB returns `413 PAYLOAD_TOO_LARGE` (`The request body is too large.`, RFC 9110 section 15.5.14) with `Cache-Control: no-store`; this is checked before authentication, so it applies to any route that reads a body.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses
 404. Validation must not disclose whether another caregiver owns a valid UUID.
 
