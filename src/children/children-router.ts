@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { AgeRangeError, assertBirthMonthInRange } from "./age.js";
-import { createFirestoreChildrenStore, type ChildrenStore } from "./children-store.js";
+import { MAX_CHILDREN, createFirestoreChildrenStore, type ChildrenStore } from "./children-store.js";
 import { applyUpdate, toPublic, toStored } from "./mapping.js";
 import { CreateChildSchema, UpdateChildSchema, toErrorDetails } from "./schemas.js";
 
@@ -59,7 +59,15 @@ childrenRouter.post("/", async (request, response) => {
   const now = new Date();
   if (!rangeCheck(response, parsed.data.birthMonthYear, now)) return;
   const child = toStored(parsed.data, uidOf(request), randomUUID(), now);
-  await getStore().create(uidOf(request), child);
+  if (!(await getStore().create(uidOf(request), child))) {
+    return void response.status(422).json({
+      error: {
+        code: "UNPROCESSABLE_ENTITY",
+        message: `You can add up to ${MAX_CHILDREN} children.`,
+        details: [{ field: "children", issue: `Limit of ${MAX_CHILDREN} children reached` }]
+      }
+    });
+  }
   response.status(201).json(toPublic(child, now));
 });
 

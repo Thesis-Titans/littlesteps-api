@@ -264,8 +264,8 @@ paths:
         Unpaginated JSON array ordered by createdAt, then id.
         Query only the verified UID's caregiver path; never list globally and
         filter in the client. An account without children receives an empty array.
-        Pagination is not provided. At most 50 children are returned; no
-        per-caregiver cap on creation has been decided.
+        Pagination is not provided. A caregiver can have at most 20 children;
+        the list bound of 50 is only a safety limit.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -697,7 +697,9 @@ components:
             invalidJson:
               value: { error: { code: INVALID_JSON, message: Request body must be valid JSON } }
     UnprocessableAge:
-      description: Birth month is in the future or implies an age over 71 months.
+      description: >-
+        Birth month is in the future or implies an age over 71 months, or (POST
+        only) the caregiver already has 20 children.
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'
@@ -712,6 +714,12 @@ components:
                   code: UNPROCESSABLE_ENTITY
                   message: Child age must be between 0 and 71 months
                   details: [{ field: birthMonthYear, issue: Must not be in the future or older than 71 months }]
+            limitReached:
+              value:
+                error:
+                  code: UNPROCESSABLE_ENTITY
+                  message: You can add up to 20 children.
+                  details: [{ field: children, issue: Limit of 20 children reached }]
     ChildNotFound:
       description: Child missing from the caller's scope or not owned by the caller; identical response.
       headers:

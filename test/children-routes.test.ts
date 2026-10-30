@@ -228,4 +228,21 @@ describe("children routes", () => {
       }
     }
   });
+
+  it("returns 422 on the 21st child, per caregiver, after body validation", async () => {
+    for (let n = 0; n < 20; n++) expect((await create(A, { nickname: `C${n}`, ageBand: "0-5m" })).status).toBe(201);
+    const res = await create(A, { nickname: "Extra", ageBand: "0-5m" });
+    expect(res.status).toBe(422);
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.body).toEqual({
+      error: {
+        code: "UNPROCESSABLE_ENTITY",
+        message: "You can add up to 20 children.",
+        details: [{ field: "children", issue: "Limit of 20 children reached" }]
+      }
+    });
+    expect((await create(A, { nickname: "" })).status).toBe(400);
+    expect((await create(B, { nickname: "Other", ageBand: "0-5m" })).status).toBe(201);
+    expect((await request(app).get("/api/v1/children").set("Authorization", A)).body).toHaveLength(20);
+  });
 });

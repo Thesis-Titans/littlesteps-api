@@ -95,4 +95,29 @@ describe("children API against the Auth and Firestore emulators", () => {
     const list = await request(app).get("/api/v1/children").set({ Authorization: `Bearer ${a.idToken}` });
     expect(list.body.map((c: { nickname: string }) => c.nickname)).toEqual(Array.from({ length: 50 }, (_, n) => `C${n}`));
   });
+
+  it("caps a caregiver at 20 children under concurrent creates", async () => {
+    const a = await signUp();
+    const auth = { Authorization: `Bearer ${a.idToken}` };
+    const post = () => request(app).post("/api/v1/children").set(auth).send({ nickname: "Kid", ageBand: "0-5m" });
+    const first = await Promise.all(Array.from({ length: 20 }, post));
+    expect(first.map((r) => r.status)).toEqual(Array(20).fill(201));
+    const extra = await post();
+    expect(extra.status).toBe(422);
+    expect(extra.body.error.details).toEqual([{ field: "children", issue: "Limit of 20 children reached" }]);
+    const col = getFirestore().collection("caregivers").doc(a.localId).collection("children");
+    expect((await col.get()).size).toBe(20);
+  }, 60_000);
+
+  it("stores exactly 20 when 25 creates race", async () => {
+    const a = await signUp();
+    const auth = { Authorization: `Bearer ${a.idToken}` };
+    const res = await Promise.all(
+      Array.from({ length: 25 }, () => request(app).post("/api/v1/children").set(auth).send({ nickname: "Kid", ageBand: "0-5m" }))
+    );
+    expect(res.filter((r) => r.status === 201)).toHaveLength(20);
+    expect(res.filter((r) => r.status === 422)).toHaveLength(5);
+    const col = getFirestore().collection("caregivers").doc(a.localId).collection("children");
+    expect((await col.get()).size).toBe(20);
+  }, 60_000);
 });

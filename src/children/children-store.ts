@@ -6,7 +6,8 @@ import type { StoredChild } from "./types.js";
 export interface ChildrenStore {
   list(uid: string): Promise<StoredChild[]>;
   get(uid: string, childId: string): Promise<StoredChild | null>;
-  create(uid: string, child: StoredChild): Promise<void>;
+  /** Atomic with the count; returns false (and writes nothing) when the caregiver already has MAX_CHILDREN. */
+  create(uid: string, child: StoredChild): Promise<boolean>;
   /** Atomic read-modify-write; returns null (and writes nothing) when missing or not owned. */
   update(uid: string, childId: string, fn: (current: StoredChild) => StoredChild): Promise<StoredChild | null>;
 }
@@ -15,7 +16,9 @@ export interface ChildrenStore {
 const ownedBy = (uid: string, child: StoredChild | undefined): StoredChild | null =>
   child && child.caregiverId === uid ? child : null;
 
-/** Read cap for list; no per-caregiver creation cap is decided. */
+/** Per-caregiver cap on children (decision 2026-10-30). */
+export const MAX_CHILDREN = 20;
+/** Safety bound for list; a caregiver can never have more than MAX_CHILDREN. */
 export const LIST_LIMIT = 50;
 
 export function createFirestoreChildrenStore(): ChildrenStore {
@@ -31,7 +34,12 @@ export function createFirestoreChildrenStore(): ChildrenStore {
       return snap.exists ? ownedBy(uid, snap.data() as StoredChild) : null;
     },
     async create(uid, child) {
-      await col(uid).doc(child.id).create(child);
+      return getFirestore().runTransaction(async (tx) => {
+        const existing = await tx.get(col(uid).limit(MAX_CHILDREN));
+        if (existing.size >= MAX_CHILDREN) return false;
+        tx.create(col(uid).doc(child.id), child);
+        return true;
+      });
     },
     async update(uid, childId, fn) {
       const ref = col(uid).doc(childId);
@@ -63,7 +71,9 @@ export function createMemoryChildrenStore(): ChildrenStore & { data: Map<string,
       return ownedBy(uid, data.get(`${uid}/${childId}`));
     },
     async create(uid, child) {
+      if ([...data.keys()].filter((k) => k.startsWith(`${uid}/`)).length >= MAX_CHILDREN) return false;
       data.set(`${uid}/${child.id}`, { ...child });
+      return true;
     },
     async update(uid, childId, fn) {
       const current = ownedBy(uid, data.get(`${uid}/${childId}`));
