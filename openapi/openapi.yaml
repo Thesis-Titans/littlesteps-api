@@ -4,7 +4,9 @@ info:
   version: 0.2.0
   description: >-
     Health, identity, learning-catalog, child-profile (create, list, read, update) and
-    AI recommendations (deterministic fallback only) endpoints are implemented. Rate
+    AI recommendations endpoints are implemented. The recommendations endpoint calls Gemini
+    only when the GEMINI_API_KEY and GEMINI_MODEL server variables are both set; without
+    them, or on any provider failure, it returns the deterministic catalog fallback. Rate
     limiting is implemented on the AI recommendations endpoint only. Child deletion is
     not implemented.
     Open decisions D5 (deletion execution) and D6 (production retention) in

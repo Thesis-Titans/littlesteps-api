@@ -1,6 +1,6 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes and AI recommendations (`POST /api/v1/ai/recommendations`, deterministic fallback only; no AI provider is configured yet) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only; other abuse protection, AI provider integration, data export and deletion are not implemented yet.
+Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only; other abuse protection, data export and deletion are not implemented yet.
 
 ---
 
@@ -57,7 +57,14 @@ All other routes, including errors, respond with `Cache-Control: no-store`.
 - `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
 
 ### Implemented AI Endpoint (authenticated):
-- `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; deterministic catalog fallback only, no AI provider configured yet.
+- `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; reviewed catalog items only. Uses Gemini only when `GEMINI_API_KEY` and `GEMINI_MODEL` are both set; otherwise, and on any provider failure, it returns the deterministic catalog fallback with 200.
+
+#### AI provider (Gemini)
+- Configure with two variables, both required: `GEMINI_API_KEY` (a secret) and `GEMINI_MODEL` (the model name; there is no default in code). If either is missing or empty the provider is off and the endpoint serves the deterministic fallback. See `.env.example`; never commit real values.
+- Local: put them in `.env` (git-ignored) or the emulator environment. Deployed: `firebase functions:secrets:set GEMINI_API_KEY` stores the key, but the function must also list the secret in its `secrets` option to receive it. That is not set up in `src/index.ts` because declaring it would make deploys fail until the secret exists; add it as part of the first real deployment. Until then, the deployed function reads `process.env` only. Not tested on a deployed function.
+- The provider calls the Gemini REST `generateContent` endpoint with `fetch`, the key in the `x-goog-api-key` header (never in a URL), the existing prompt only, a JSON response schema (`{picks:[{id, why}]}`), temperature 0.2, at most 1024 output tokens, provider-default safety settings and the service's 8 second abort. Replies are validated again against the catalog ids; any failure falls back to the catalog. Errors carry fixed messages, and prompts, replies and the key are never logged.
+- Circuit breaker: after 3 consecutive provider failures the provider is skipped for 60 seconds (the fallback is served), then one trial call is allowed. State is per function instance.
+- ADR-008: prompts may contain only synthetic or catalog data (age band, time, setting, cleaned materials, language, candidate titles). The Gemini free tier may use prompts and replies to improve Google products and may show them to human reviewers, so use synthetic data only until the project moves to a paid tier or Vertex AI before any real caregiver uses the helper.
 
 #### AI rate limiting
 - Limits: 10 requests per signed-in user and 30 per IP address, each per clock hour (fixed window, UTC; a burst across an hour boundary can use up to twice the limit). Over the limit: `429 RATE_LIMITED`, `Retry-After` = seconds until the window resets (1 to 3600), `Cache-Control: no-store`.
