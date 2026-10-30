@@ -5,17 +5,18 @@ import {
   type CatalogActivitiesQuery,
   type CatalogActivity
 } from "./types.js";
-import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
 import { FALLBACK_BOOKS } from "./fixtures/books.fallback.js";
 
 interface CacheEntry {
   timestamp: number;
+  ttlMs: number;
   data: BooksResponse;
 }
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (per api-reference.md §5.1)
 // Fix #3: Cap cache at 100 entries to bound memory under unauthenticated arbitrary subject queries.
 const CACHE_MAX_ENTRIES = 100;
+const FALLBACK_CACHE_TTL_MS = 60 * 1000; // short TTL so a transient outage recovers quickly
 const booksCache = new Map<string, CacheEntry>();
 
 // Fix #1: Synthetic fixture files are engineering-only content and must NEVER be
@@ -47,7 +48,13 @@ function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
   });
 }
 
-const activitiesStore: CatalogActivity[] = validateActivities(SYNTHETIC_ACTIVITIES);
+// Production starts empty: no reviewed content exists yet, and synthetic fixtures must never be served.
+// Test-only: tests inject fixtures via setCatalogActivities(); production never calls it.
+let activitiesStore: CatalogActivity[] = [];
+
+export function setCatalogActivities(items: CatalogActivity[]): void {
+  activitiesStore = validateActivities(items);
+}
 const fallbackBooks: BookItem[] = FALLBACK_BOOKS;
 
 export function getCatalogActivities(query: CatalogActivitiesQuery): { total: number; items: CatalogActivity[] } {
@@ -82,6 +89,15 @@ export function getCatalogActivityById(id: string): CatalogActivity | undefined 
   return activitiesStore.find((item) => item.id === id);
 }
 
+function setBooksCache(key: string, entry: CacheEntry): void {
+  // Fix #3: Evict the oldest cache entry when the map exceeds the size cap.
+  if (!booksCache.has(key) && booksCache.size >= CACHE_MAX_ENTRIES) {
+    const oldestKey = booksCache.keys().next().value;
+    if (oldestKey !== undefined) booksCache.delete(oldestKey);
+  }
+  booksCache.set(key, entry);
+}
+
 export async function getBooksCatalog(
   subject = "picture_books",
   limit = 12,
@@ -91,7 +107,7 @@ export async function getBooksCatalog(
   const now = Date.now();
   const cached = booksCache.get(cacheKey);
 
-  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+  if (cached && now - cached.timestamp < cached.ttlMs) {
     return { response: cached.data, fromCache: true };
   }
 
@@ -144,12 +160,7 @@ export async function getBooksCatalog(
       }
     };
 
-    // Fix #3: Evict the oldest cache entry when the map exceeds the size cap.
-    if (booksCache.size >= CACHE_MAX_ENTRIES) {
-      const oldestKey = booksCache.keys().next().value;
-      if (oldestKey !== undefined) booksCache.delete(oldestKey);
-    }
-    booksCache.set(cacheKey, { timestamp: now, data: result });
+    setBooksCache(cacheKey, { timestamp: now, ttlMs: CACHE_TTL_MS, data: result });
     return { response: result, fromCache: false };
   } catch {
     // Graceful offline degradation per api-reference.md §5.1 & ADR-010
@@ -165,6 +176,7 @@ export async function getBooksCatalog(
       }
     };
 
+    setBooksCache(cacheKey, { timestamp: now, ttlMs: FALLBACK_CACHE_TTL_MS, data: fallbackResponse });
     return { response: fallbackResponse, fromCache: false };
   }
 }

@@ -77,9 +77,13 @@ export const BooksResponseSchema = z.object({
 });
 export type BooksResponse = z.infer<typeof BooksResponseSchema>;
 
+// Allowlist of Open Library subject slugs (derived from the fallback fixture subjects).
+export const BookSubjectSchema = z.enum(["picture_books", "bedtime", "colors", "animals"]);
+
+export const CatalogIdParamSchema = z.string().max(64).regex(/^[a-z0-9-]+$/);
+
 export const BooksQuerySchema = z.object({
-  // Fix #3: Bound subject length to prevent unbounded cache key growth from arbitrary subject inputs.
-  subject: z.string().trim().min(1).max(64).default("picture_books").optional(),
+  subject: BookSubjectSchema.default("picture_books"),
   limit: z.preprocess(
     (value) => (value !== undefined ? Number(value) : 12),
     z.number().int().min(1).max(30)

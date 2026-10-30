@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app.js";
-import { clearBooksCache } from "../src/catalog/catalog-service.js";
+import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
+import { clearBooksCache, setCatalogActivities } from "../src/catalog/catalog-service.js";
 
 // ---------------------------------------------------------------------------
 // Helpers – deterministic mock fetch responses for Open Library
@@ -42,6 +43,7 @@ function makeFetchFail(): typeof fetch {
 
 describe("Learning Catalog API (/api/v1/catalog)", () => {
   beforeEach(() => {
+    setCatalogActivities(SYNTHETIC_ACTIVITIES);
     clearBooksCache();
     vi.restoreAllMocks();
   });
@@ -128,6 +130,7 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("INVALID_INPUT");
       expect(res.body.error).toHaveProperty("details");
+      expect(res.body.error.details[0]).toEqual({ field: expect.any(String), issue: expect.any(String) });
     });
 
     it("returns 400 INVALID_INPUT on invalid limit", async () => {
@@ -150,10 +153,23 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.headers["cache-control"]).toBe("public, max-age=3600");
     });
 
-    it("returns 404 NOT_FOUND for unknown activity id", async () => {
+    it("returns 404 RESOURCE_NOT_FOUND with a fixed message for unknown id", async () => {
       const res = await request(app).get("/api/v1/catalog/activities/non-existent-id");
       expect(res.status).toBe(404);
-      expect(res.body.error.code).toBe("NOT_FOUND");
+      expect(res.body.error.code).toBe("RESOURCE_NOT_FOUND");
+      expect(res.body.error.message).not.toContain("non-existent-id");
+    });
+
+    it("returns 400 INVALID_INPUT for malformed or oversized id", async () => {
+      for (const id of ["BAD_ID", "a".repeat(65)]) {
+        const res = await request(app).get(`/api/v1/catalog/activities/${id}`);
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe("INVALID_INPUT");
+      }
+    });
+
+    it("rejects reviewed_approved fixtures at injection", () => {
+      expect(() => setCatalogActivities([{ ...SYNTHETIC_ACTIVITIES[0]!, status: "reviewed_approved" }])).toThrow(/Content gating/);
     });
   });
 
@@ -211,6 +227,22 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       const res = await request(app).get("/api/v1/catalog/books?subject=picture_books&limit=3");
       expect(res.status).toBe(200);
       expect(res.body.provenance.source).toBe("local-fallback");
+      expect(res.headers["cache-control"]).toBe("public, max-age=60");
+    });
+
+    it("caches the fallback so a second request does not hit upstream", async () => {
+      const mockFetch = makeFetchFail();
+      vi.stubGlobal("fetch", mockFetch);
+      await request(app).get("/api/v1/catalog/books?limit=3");
+      const res = await request(app).get("/api/v1/catalog/books?limit=3");
+      expect(res.headers["x-cache"]).toBe("HIT");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns 400 INVALID_INPUT for a subject outside the allowlist", async () => {
+      const res = await request(app).get("/api/v1/catalog/books?subject=horror");
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("INVALID_INPUT");
     });
 
     it("returns 400 INVALID_INPUT on invalid limit", async () => {
