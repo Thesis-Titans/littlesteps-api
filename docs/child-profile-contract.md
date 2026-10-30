@@ -23,7 +23,7 @@ projections and new validation behavior below are proposals, not working routes.
 |---|---|---|---|
 | `id` | `id`: string; document ID | Yes | Server-generated lowercase UUIDv4; stable lookup key, never proof of ownership. |
 | `nickname` | `name`: string | Yes | 1-50 characters, not whitespace-only; supports child selection without requiring a full name. |
-| `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM`; coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
+| `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM` (ISO 8601 reduced-precision calendar month); coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
 | `ageBand` | `ageBand`: enum string | Yes | Navigation category. Derived on read from `birthMonth` when present (not trusted from storage); otherwise the stored caregiver-selected band. |
 | Not exposed in draft | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
 | `createdAt` | Firestore timestamp | Yes | Server creation time; API serializes as UTC RFC 3339. Immutable. |
@@ -56,16 +56,27 @@ is in the future or more than 71 months ago (months = (current year × 12 + curr
 an existing child who has passed 71 months stays at `60-71m` (conservative
 "outgrown" behaviour: never an error, no new field, no clamping on write).
 A caregiver-selected band (no birth month) is returned as stored and does not age.
-Examples use October 2026 explicitly. The OpenAPI pattern validates month shape only.
+Examples use October 2026 explicitly. `YYYY-MM` is an ISO 8601 reduced-precision
+calendar month, not an RFC 3339 full-date or date-time (RFC 3339 section 5.6
+`full-date` needs year-month-day); timestamps stay RFC 3339. The OpenAPI
+`pattern` checks shape only; the 422 range check is server logic.
 
-Nickname normalization (including trimming) is pending. The draft imposes raw
+422 is "Unprocessable Content" in RFC 9110 section 15.5.21 (originally RFC 4918
+section 11.2). The 400/422 split is a project convention: 400 for malformed JSON
+or shape (RFC 9110 section 15.5.1), 422 for a well-formed value that violates a
+business rule.
+
+Nickname normalization (decision D4): trim leading and trailing whitespace and
+collapse internal whitespace runs to one space. The contract also imposes raw
 length bounds and rejects whitespace-only text. PATCH accepts `nickname`
 and/or exactly one of `birthMonthYear` or `ageBand` (both fail with 400), with the
 same validation as create, so caregivers can correct age (right to rectification,
 data-model section on privacy). Sending `birthMonthYear` stores the month and the
 band is derived on read; sending `ageBand` replaces the age source and removes any
 stored birth month. Empty updates and nulls are invalid (400); an out-of-range
-birth month is 422.
+birth month is 422. The PATCH body is plain `application/json` partial update, not
+JSON Merge Patch (RFC 7396 gives `null` the meaning "remove"); nulls are
+rejected with 400.
 
 ## Identity and ownership
 
@@ -93,7 +104,13 @@ Trusted path: `caregivers/{verifiedUid}/children/{childId}`.
 
 Path selection protects the initial lookup; stored ownership protects disclosure
 and mutation. Owner/path mismatch fails closed with the same external 404 and
-no private metadata in logs. UUID uniqueness is not authorization. Admin SDK
+no private metadata in logs. Returning the same 404 for a missing child and
+another caregiver's child is a project design choice. It rests on per-object
+authorization (OWASP API1:2023 Broken Object Level Authorization,
+https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization);
+that page does not itself prescribe 404 over 403. Testable rule: both cases
+return the same status, body and headers, from a single lookup of the caller's
+own path. UUID uniqueness is not authorization. Admin SDK
 bypasses Firestore rules, so application checks are mandatory; existing deny-all
 client rules stay intact. No sharing, delegation or ownership-transfer API exists.
 
@@ -109,9 +126,21 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 Paths follow the existing `/api/v1` prefix but remain proposed. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
 pagination are unspecified. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
+The envelope is a deliberate deviation from RFC 9457 problem details (RFC 9457
+section 4 allows an application to carry errors in a format it already defines);
+the cheapest later change is `application/problem+json`. Error responses send
+`Cache-Control: no-store` (RFC 9111 section 5.2.2.5), because RFC 9110 section
+15.1 lists 404 as heuristically cacheable.
+Any endpoint may return `429 RATE_LIMITED` with `Retry-After: <delay-seconds>`
+(RFC 6585 section 4, RFC 9110 section 10.2.3); clients should back off for that
+many seconds. Limits are per-IP and per-UID. Rate limiting is NOT implemented yet.
 Proposed `INVALID_INPUT` uses 400, matching the existing malformed-input status.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses
 404. Validation must not disclose whether another caregiver owns a valid UUID.
+
+The catalog books `X-Cache` header is a documented non-standard debug header; RFC
+6648 says new headers should not use the `X-` prefix (alternative: `Cache-Status`,
+RFC 9211, not reviewed).
 
 ## Synthetic examples
 
@@ -183,10 +212,10 @@ database migration, owner transfer or multi-owner support is added.
 
 | Gate | Question and effect | Status / reviewer |
 |---|---|---|
-| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | PENDING CONFIRMATION by Mark (nickname to `name`, `birthMonthYear` to `birthMonth` mapping; not decided here). |
+| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | DECIDED 2026-10-30 (Mark): the API names `nickname` and `birthMonthYear` are final; they map to stored `name` and `birthMonth` in one place in the service; `caregiverId` is never returned. |
 | D2: Age calculation | UTC calendar month; band derived on read; 422 on create/edit beyond 71 months or future; existing child stays at `60-71m` on read. | DECIDED (this PR review); Mark may still review. |
 | D3: Age edits | PATCH allows nickname and exactly one age source; switching replaces the source; no nulls/clearing; both sources is 400. | DECIDED (this PR review); Mark may still review. |
-| D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | PENDING DECISION: contract reviewers. |
+| D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | DECIDED 2026-10-30 (Mark): trim and collapse whitespace in `nickname`; methods, paths, `400 INVALID_INPUT` / `INVALID_JSON`, success projection and a bare-array list stay as written in this contract. |
 | D5: Deletion execution | Decide orchestration, partial failures, retries, account-deletion sequencing, concurrent writes and backups; prevents orphaned private records. | BLOCKED for deletion implementation: technical lead and responsible privacy authority. |
 | D6: Production retention | Decide purpose, durations, exceptions, notice and deletion timing. Proposed 12-month inactivity rule is not approved. | BLOCKED for production policy/deployment: responsible school/team authority. |
 
