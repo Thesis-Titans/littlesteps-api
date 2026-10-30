@@ -15,6 +15,16 @@ describe("cleanMaterials", () => {
   });
 });
 
+describe("cleanMaterials unicode", () => {
+  it("turns all separators into one space", () => {
+    expect(cleanMaterials(["a\u2028b\u2029c\u00a0 d"])).toEqual(["a b c d"]);
+  });
+  it("does not split a surrogate pair at the cut", () => {
+    const out = cleanMaterials(["a".repeat(39) + "😀😀"]);
+    expect(out).toEqual(["a".repeat(39) + "😀"]);
+  });
+});
+
 describe("validateOutput", () => {
   const ids = new Set(["a", "b", "c"]);
   const ok = { picks: [{ id: "a", why: "Fits the time you have." }] };
@@ -26,11 +36,30 @@ describe("validateOutput", () => {
     ["why too long", { picks: [{ id: "a", why: "x".repeat(141) }] }],
     ["denylist term", { picks: [{ id: "a", why: "Good for a developmental delay." }] }],
     ["denylist prefix", { picks: [{ id: "a", why: "Autistic children enjoy it." }] }],
+    ["zero-width in delay", { picks: [{ id: "a", why: "Not a de\u200blay." }] }],
+    ["cyrillic lookalike", { picks: [{ id: "a", why: "Not a d\u0435lay." }] }],
+    ["hyphenated", { picks: [{ id: "a", why: "Not a de-lay." }] }],
+    ["underscored", { picks: [{ id: "a", why: "Not a de_lay." }] }],
+    ["double space phrase", { picks: [{ id: "a", why: "A screening  score." }] }],
+    ["newline phrase", { picks: [{ id: "a", why: "A red\nflag." }] }],
+    ["developmental concern", { picks: [{ id: "a", why: "A developmental concern." }] }],
+    ["empty why", { picks: [{ id: "a", why: "" }] }],
+    ["whitespace-only why", { picks: [{ id: "a", why: "   " }] }],
+    ["html", { picks: [{ id: "a", why: "Try <b>this</b>." }] }],
+    ["url", { picks: [{ id: "a", why: "See https://example.com now." }] }],
+    ["www", { picks: [{ id: "a", why: "See www.example.com now." }] }],
     ["empty picks", { picks: [] }],
     ["malformed", "nope"],
     ["wrong shape", { picks: [{ id: 1 }] }]
   ])("rejects %s", (_name, reply) => {
     expect(validateOutput(reply, ids, 1)).toBeNull();
+  });
+});
+
+describe("validateOutput harmless wording", () => {
+  const ids = new Set(["a"]);
+  it.each(["A fun treat for you both.", "Hide behind the couch and peek out."])("accepts %s", (why) => {
+    expect(validateOutput({ picks: [{ id: "a", why }] }, ids, 1)).toHaveLength(1);
   });
 });
 
