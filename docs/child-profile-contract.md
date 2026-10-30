@@ -183,10 +183,10 @@ database migration, owner transfer or multi-owner support is added.
 
 | Gate | Question and effect | Status / reviewer |
 |---|---|---|
-| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | PENDING CONFIRMATION by Mark (nickname to `name`, `birthMonthYear` to `birthMonth` mapping; not decided here). |
+| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | DECIDED 2026-10-30 (Mark): the API names `nickname` and `birthMonthYear` are final; they map to stored `name` and `birthMonth` in one place in the service; `caregiverId` is never returned. |
 | D2: Age calculation | UTC calendar month; band derived on read; 422 on create/edit beyond 71 months or future; existing child stays at `60-71m` on read. | DECIDED (this PR review); Mark may still review. |
 | D3: Age edits | PATCH allows nickname and exactly one age source; switching replaces the source; no nulls/clearing; both sources is 400. | DECIDED (this PR review); Mark may still review. |
-| D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | PENDING DECISION: contract reviewers. |
+| D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | DECIDED 2026-10-30 (Mark): trim and collapse whitespace in `nickname`; methods, paths, `400 INVALID_INPUT` / `INVALID_JSON`, success projection and a bare-array list stay as written in this contract. |
 | D5: Deletion execution | Decide orchestration, partial failures, retries, account-deletion sequencing, concurrent writes and backups; prevents orphaned private records. | BLOCKED for deletion implementation: technical lead and responsible privacy authority. |
 | D6: Production retention | Decide purpose, durations, exceptions, notice and deletion timing. Proposed 12-month inactivity rule is not approved. | BLOCKED for production policy/deployment: responsible school/team authority. |
 
