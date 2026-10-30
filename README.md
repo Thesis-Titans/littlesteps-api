@@ -1,6 +1,6 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). The initial scaffold provides health and authenticated identity endpoints only; product feature endpoints and Firestore ownership checks are not implemented yet.
+Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity, catalog and AI recommendations core (`POST /api/v1/ai/recommendations`, deterministic fallback only; no AI provider is configured yet) are implemented in this branch. Rate limiting, AI provider integration and the child-profile routes are not implemented here.
 
 ---
 
@@ -53,9 +53,12 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 
 All other routes, including errors, respond with `Cache-Control: no-store`.
 
+### Implemented AI Endpoint:
+- `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; deterministic catalog fallback only, no AI provider configured yet.
+
 ### Planned Feature & Integration Endpoints (Sprint 1):
 - `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). Design-only contract, see Status below.
-- `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
+- `POST /api/v1/ai/story-activity` (planned) — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
 ---
 
