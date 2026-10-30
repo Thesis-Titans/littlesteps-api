@@ -390,7 +390,10 @@ components:
       description: >-
         Nickname only. The server trims leading and trailing whitespace and
         collapses internal whitespace runs to one space (decision D4), then
-        rejects an empty result; whitespace-only values are invalid.
+        rejects an empty result; whitespace-only values are invalid. Unicode
+        control and format characters (for example a zero-width space) are also
+        rejected. The `pattern` checks only for a non-space character; the
+        server enforces the character rule.
     BirthMonthYear:
       type: string
       pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
