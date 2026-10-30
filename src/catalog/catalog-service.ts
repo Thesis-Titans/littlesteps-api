@@ -54,6 +54,14 @@ function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
 // Test-only: tests inject fixtures via setCatalogActivities(); production never calls it.
 let activitiesStore: CatalogActivity[] = [];
 
+/** Builds the Open Library User-Agent; the contact is limited to printable ASCII so fetch never rejects the header. */
+export function buildUserAgent(contact: string | undefined): string {
+  const clean = (contact ?? "").replace(/[^\x20-\x7E]/g, "").trim();
+  return clean
+    ? `LittleSteps-API/0.2.0 (Thesis Academic Project; contact: ${clean})`
+    : "LittleSteps-API/0.2.0 (Thesis Academic Project)";
+}
+
 export function setCatalogActivities(items: CatalogActivity[]): void {
   activitiesStore = validateActivities(items);
 }
@@ -118,10 +126,7 @@ export async function getBooksCatalog(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
-    const contact = process.env.OPEN_LIBRARY_CONTACT;
-    const userAgent = contact
-      ? `LittleSteps-API/0.2.0 (Thesis Academic Project; contact: ${contact})`
-      : "LittleSteps-API/0.2.0 (Thesis Academic Project)";
+    const userAgent = buildUserAgent(process.env.OPEN_LIBRARY_CONTACT);
     const res = await fetch(upstreamUrl, {
       signal: controller.signal,
       headers: { "User-Agent": userAgent }

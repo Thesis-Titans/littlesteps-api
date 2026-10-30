@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app.js";
 import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
-import { clearBooksCache, setCatalogActivities } from "../src/catalog/catalog-service.js";
+import { buildUserAgent, clearBooksCache, setCatalogActivities } from "../src/catalog/catalog-service.js";
 
 // ---------------------------------------------------------------------------
 // Helpers – deterministic mock fetch responses for Open Library
@@ -257,5 +257,19 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("INVALID_INPUT");
     });
+  });
+});
+
+describe("Open Library User-Agent", () => {
+  it("adds a clean contact", () => {
+    expect(buildUserAgent("team@example.org")).toBe(
+      "LittleSteps-API/0.2.0 (Thesis Academic Project; contact: team@example.org)"
+    );
+  });
+
+  it("drops control and non-ASCII characters and falls back when empty", () => {
+    expect(buildUserAgent("a@b.org\r\nX-Evil: 1")).not.toMatch(/[\r\n]/);
+    expect(buildUserAgent("\r\n")).toBe("LittleSteps-API/0.2.0 (Thesis Academic Project)");
+    expect(buildUserAgent(undefined)).toBe("LittleSteps-API/0.2.0 (Thesis Academic Project)");
   });
 });
