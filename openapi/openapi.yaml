@@ -4,8 +4,9 @@ info:
   version: 0.2.0
   description: >-
     Health, identity, learning-catalog, child-profile (create, list, read, update) and
-    AI recommendations (deterministic fallback only) endpoints are implemented. Child
-    deletion and rate limiting are not implemented.
+    AI recommendations (deterministic fallback only) endpoints are implemented. Rate
+    limiting is implemented on the AI recommendations endpoint only. Child deletion is
+    not implemented.
     Open decisions D5 (deletion execution) and D6 (production retention) in
     docs/child-profile-contract.md block only the deletion API and production
     deployment, not Issue 8.
@@ -229,6 +230,11 @@ paths:
         or invalid provider output is never an error: the response falls back to deterministic
         catalog ranking (tier 3). With no reviewed content the response is 200 with an empty list.
         Responses are never cached.
+
+        Rate limit: 10 requests per signed-in user and 30 per IP address in each clock hour
+        (fixed window, UTC). Every authenticated request counts, including ones rejected as
+        invalid. Over the limit the response is 429 with Retry-After set to the seconds left in
+        the window. If the limit store is unavailable the request is allowed.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -253,7 +259,6 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '429':
-          # Not implemented yet: rate limiting is a later change.
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
@@ -885,11 +890,11 @@ components:
             internal:
               value: { error: { code: INTERNAL_ERROR, message: An unexpected error occurred } }
     RateLimited:
-      x-implementation-status: not-implemented
+      x-implementation-status: partial
       description: >-
-        Too many requests from this IP address or caller UID. Any endpoint may
-        return this. Wait Retry-After seconds before retrying. Proposed; rate
-        limiting is not implemented yet.
+        Too many requests from this IP address or caller UID. Implemented on
+        POST /api/v1/ai/recommendations only; other endpoints are not rate limited yet.
+        Wait Retry-After seconds (the real time until the hourly window resets) before retrying.
       headers:
         Retry-After:
           description: Delay in seconds before retrying (RFC 6585 section 4, RFC 9110 section 10.2.3).
@@ -905,7 +910,7 @@ components:
             $ref: '#/components/schemas/ErrorEnvelope'
           examples:
             rateLimited:
-              value: { error: { code: RATE_LIMITED, message: Too many requests } }
+              value: { error: { code: RATE_LIMITED, message: You have reached the hourly limit for suggestions. Please try again later. } }
   headers:
     RetryAfter:
       description: Seconds to wait before retrying (RFC 9110 section 10.2.3).

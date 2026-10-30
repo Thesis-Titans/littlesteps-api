@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { getFirestore } from "firebase-admin/firestore";
 import { app } from "../src/app.js";
+import { createFirestoreRateLimiter } from "../src/ai/rate-limit.js";
 
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
 
@@ -126,4 +127,21 @@ describe("children API against the Auth and Firestore emulators", () => {
     expect(statuses).not.toContain(500);
     expect((await col.get()).size).toBe(20);
   }, 60_000);
+});
+
+describe("AI rate limiter against the Firestore emulator", () => {
+  it("allows 10 concurrent requests for one user, then rejects the 11th", async () => {
+    const uid = `limit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const limiter = createFirestoreRateLimiter(10);
+    const first = await Promise.all(Array.from({ length: 10 }, () => limiter.hit(uid)));
+    expect(first.every((r) => r.allowed)).toBe(true);
+    const eleventh = await limiter.hit(uid);
+    expect(eleventh.allowed).toBe(false);
+    expect(eleventh.retryAfterSeconds).toBeGreaterThanOrEqual(1);
+    expect(eleventh.retryAfterSeconds).toBeLessThanOrEqual(3600);
+    const docs = await getFirestore().collection("rate_limits").where("uid", "==", uid).get();
+    expect(docs.size).toBe(1);
+    expect(Object.keys(docs.docs[0].data()).sort()).toEqual(["bucket", "count", "expiresAt", "uid"]);
+    expect(docs.docs[0].data().count).toBe(10);
+  });
 });

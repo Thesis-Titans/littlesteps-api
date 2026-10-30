@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
+import { aiRateLimit } from "./ai/rate-limit.js";
 import { aiRouter } from "./ai/ai-router.js";
 import { catalogRouter } from "./catalog/catalog-router.js";
 import { childrenRouter } from "./children/children-router.js";
@@ -15,6 +16,10 @@ const allowedOrigins = new Set(
 );
 
 app.disable("x-powered-by");
+// One trusted proxy hop (the Google front end on Cloud Functions): req.ip is then the rightmost
+// X-Forwarded-For entry, which that proxy appends. Earlier entries are client-supplied and are ignored.
+// shortcut: not verified on a deployed function; if more proxies sit in front, per-IP counts will be wrong.
+app.set("trust proxy", 1);
 app.use(helmet());
 // Default for every route, including errors; the catalog router overrides it with its public caching.
 app.use((_request, response, next) => {
@@ -43,7 +48,7 @@ app.get("/health", (_request, response) => {
 app.use("/api/v1/catalog", catalogRouter);
 app.use("/api/v1/children", requireFirebaseUser, childrenRouter);
 
-app.use("/api/v1/ai", requireFirebaseUser, aiRouter);
+app.use("/api/v1/ai", requireFirebaseUser, aiRateLimit, aiRouter);
 
 app.get("/api/v1/me", requireFirebaseUser, (request, response) => {
   response.setHeader("Cache-Control", "no-store");
