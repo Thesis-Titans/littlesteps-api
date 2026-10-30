@@ -754,7 +754,7 @@ components:
       x-implementation-status: not-implemented
       description: >-
         Too many requests from this IP address or caller UID. Any endpoint may
-        return this. Wait Retry-After seconds before retrying. Rate
+        return this. Wait Retry-After seconds before retrying. Proposed; rate
         limiting is not implemented yet.
       headers:
         Retry-After:
