@@ -23,8 +23,8 @@ projections and new validation behavior below are proposals, not working routes.
 |---|---|---|---|
 | `id` | `id`: string; document ID | Yes | Server-generated lowercase UUIDv4; stable lookup key, never proof of ownership. |
 | `nickname` | `name`: string | Yes | 1-50 characters, not whitespace-only; supports child selection without requiring a full name. |
-| `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM`; coarse age calculation without a day of birth. Valid, nonfuture month within supported age range. |
-| `ageBand` | `ageBand`: enum string | Yes | Stored navigation category; server-derived when birth month is present, otherwise caregiver-selected. Refresh policy pending. |
+| `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM`; coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
+| `ageBand` | `ageBand`: enum string | Yes | Navigation category. Derived on read from `birthMonth` when present (not trusted from storage); otherwise the stored caregiver-selected band. |
 | Not exposed in draft | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
 | `createdAt` | Firestore timestamp | Yes | Server creation time; API serializes as UTC RFC 3339. Immutable. |
 | `updatedAt` | Firestore timestamp | Yes | Server last-update time; API serializes as UTC RFC 3339. Never client-assigned. |
@@ -49,17 +49,23 @@ Bands: `0-5m`, `6-11m`, `12-23m`, `24-35m`, `36-47m`, `48-59m`, `60-71m`.
 These are educational navigation categories, not clinical classifications.
 The candidate month calculation is
 `12 * (currentYear - birthYear) + currentMonth - birthMonth`.
-The authoritative timezone/clock, refresh of stored bands and behavior after
-71 months remain pending. Examples use October 2026 explicitly, not a clock policy.
-The OpenAPI pattern validates month shape only; semantic checks must reject
-future months/out-of-range ages after review, never silently clamp them.
+**Decided (D2):** age is computed from the server's UTC calendar month. The band
+is derived on read from `birthMonth`, so it never goes stale. A birth month that
+is in the future or more than 71 months ago (months = (current year × 12 + current month) − (birth year × 12 + birth month), in UTC; 0 to 71 inclusive is accepted) is rejected on create/edit with
+`422 UNPROCESSABLE_ENTITY` (shape errors such as `2025-13` stay `400`). On read,
+an existing child who has passed 71 months stays at `60-71m` (conservative
+"outgrown" behaviour: never an error, no new field, no clamping on write).
+A caregiver-selected band (no birth month) is returned as stored and does not age.
+Examples use October 2026 explicitly. The OpenAPI pattern validates month shape only.
 
 Nickname normalization (including trimming) is pending. The draft imposes raw
-length bounds and rejects whitespace-only text. PATCH specifies rename only;
-birth-month correction, switching age sources, clearing and recalculation remain
-blocked. This does not remove the canonical rectification requirement: full
-update behavior is incomplete until reviewed. Empty updates/nulls are invalid
-under the present draft.
+length bounds and rejects whitespace-only text. PATCH accepts `nickname`
+and/or exactly one of `birthMonthYear` or `ageBand` (both fail with 400), with the
+same validation as create, so caregivers can correct age (right to rectification,
+data-model section on privacy). Sending `birthMonthYear` stores the month and the
+band is derived on read; sending `ageBand` replaces the age source and removes any
+stored birth month. Empty updates and nulls are invalid (400); an out-of-range
+birth month is 422.
 
 ## Identity and ownership
 
@@ -95,14 +101,14 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
-| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token |
+| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range |
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 400 UUID; 401 token; 404 missing/not owned |
-| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON/UUID; 401 token; 404 missing/not owned |
+| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON/UUID; 401 token; 404 missing/not owned; 422 age out of range |
 
 Paths follow the existing `/api/v1` prefix but remain proposed. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
-pagination are unspecified. Errors retain `{ "error": { "code", "message" } }`.
+pagination are unspecified. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
 Proposed `INVALID_INPUT` uses 400, matching the existing malformed-input status.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses
 404. Validation must not disclose whether another caregiver owns a valid UUID.
@@ -148,7 +154,7 @@ also send `Content-Type: application/json`.
    an expired synthetic token or malformed Bearer header has the same 401 body.
 7. **Cross-owner:** Assume B owns `9f7df214-655e-48de-82a8-dde1486746bf`.
    A's GET at that child path returns 404:
-   `{"error":{"code":"NOT_FOUND","message":"Resource not found"}}`.
+   `{"error":{"code":"RESOURCE_NOT_FOUND","message":"Resource not found"}}`.
 8. **Identifier substitution:** A replaces their PATCH URL ID with B's ID and
    sends `{"nickname":"Sample Sprout"}`: identical 404, no mutation. Forged UID
    headers/query parameters cannot change identity. A `caregiverId` body field
@@ -159,7 +165,11 @@ also send `Content-Type: application/json`.
    `{"error":{"code":"INVALID_INPUT","message":"Request fields are invalid"}}`.
    Malformed JSON uses existing 400 `INVALID_JSON` / `Request body must be valid JSON`.
    Malformed UUID syntax uses proposed 400 `INVALID_INPUT`, not an ownership lookup.
-10. **Missing child:** Assume `8c2bce8d-9066-428d-aafa-c26761845c6e` is absent.
+10. **Age out of range:** POST `{"nickname":"Sample Child","birthMonthYear":"2027-01"}`
+    (future) or `"2019-01"` (over 71 months) proposes 422:
+    `{"error":{"code":"UNPROCESSABLE_ENTITY","message":"Child age must be between 0 and 71 months","details":[{"field":"birthMonthYear","issue":"Must not be in the future or older than 71 months"}]}}`.
+    PATCH `{"birthMonthYear":"2025-07"}` corrects age with the same checks.
+11. **Missing child:** Assume `8c2bce8d-9066-428d-aafa-c26761845c6e` is absent.
     A's GET or PATCH at that child path receives the identical 404 body from
     example 7, regardless of whether the ID exists elsewhere.
 
@@ -173,9 +183,9 @@ database migration, owner transfer or multi-owner support is added.
 
 | Gate | Question and effect | Status / reviewer |
 |---|---|---|
-| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | PENDING DECISION: Mark and frontend partner. |
-| D2: Age calculation | Decide clock/timezone, stored-band refresh and aging beyond 71 months; affects create/read/list and persistence. | BLOCKED before implementation: Mark and frontend partner. |
-| D3: Age edits | Decide birth-month corrections, source switching, clearing/nulls, contradictory input and manual-band aging. PATCH illustrates rename only. | BLOCKED before full update implementation: Mark and frontend partner. |
+| D1: Mapping/projection | Confirm API/storage mapping and omission of internal UID; affects client/schema alignment. | PENDING CONFIRMATION by Mark (nickname to `name`, `birthMonthYear` to `birthMonth` mapping; not decided here). |
+| D2: Age calculation | UTC calendar month; band derived on read; 422 on create/edit beyond 71 months or future; existing child stays at `60-71m` on read. | DECIDED (this PR review); Mark may still review. |
+| D3: Age edits | PATCH allows nickname and exactly one age source; switching replaces the source; no nulls/clearing; both sources is 400. | DECIDED (this PR review); Mark may still review. |
 | D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | PENDING DECISION: contract reviewers. |
 | D5: Deletion execution | Decide orchestration, partial failures, retries, account-deletion sequencing, concurrent writes and backups; prevents orphaned private records. | BLOCKED for deletion implementation: technical lead and responsible privacy authority. |
 | D6: Production retention | Decide purpose, durations, exceptions, notice and deletion timing. Proposed 12-month inactivity rule is not approved. | BLOCKED for production policy/deployment: responsible school/team authority. |

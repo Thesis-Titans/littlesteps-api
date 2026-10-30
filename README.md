@@ -50,7 +50,7 @@ The technical contract is maintained in [`openapi/openapi.yaml`](openapi/openapi
 Issue #7 defines a **proposed, unimplemented** child-profile contract in
 [OpenAPI](openapi/openapi.yaml): create/list at `/api/v1/children` and read/update
 at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs/child-profile-contract.md)
-for field mappings, synthetic examples, review gates and pending age/privacy
+for field mappings, synthetic examples, review gates (age rules decided; D1 mapping pending Mark) and privacy
 decisions. These routes are not available in the emulator yet; implementation
 belongs to Issue #8 after contract review.
 
