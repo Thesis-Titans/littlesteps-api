@@ -6,7 +6,9 @@ export const NON_DIAGNOSTIC_DENYLIST: readonly string[] = [
   "delay", "disorder", "diagnos", "autis", "adhd", "assessment", "assessing", "assessed", "treatment",
   "treating", "therapy", "therapist", "clinical", "abnormal", "falling behind", "behind in",
   "developmentally delayed", "developmental concern", "developmental problem", "developmental issue",
-  "deficit", "screening score", "red flag", "impair", "disabilit", "syndrome", "milestone"
+  "deficit", "screening score", "red flag", "impair", "disabilit", "syndrome", "milestone",
+  // Filipino terms (Hiligaynon is not covered yet). shortcut: needs review by a Filipino speaker, extend with hil terms.
+  "antala", "naantala", "nagkaantala", "pagkaantala", "kapansanan", "sakit sa pag-iisip"
 ];
 
 // Common Cyrillic/Greek lookalikes folded to Latin. shortcut: small explicit map, extend if new ones show up.
@@ -18,6 +20,9 @@ const LOOKALIKES: Record<string, string> = {
 function normalise(text: string): string {
   return text
     .normalize("NFKC")
+    // Accents are removed for matching only; the stored text is untouched.
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
     .replace(/\s+/g, " ")
     .replace(/[\p{Cf}\p{Cc}]/gu, "")
     .toLowerCase()

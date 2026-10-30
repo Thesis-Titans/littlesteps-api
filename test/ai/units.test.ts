@@ -120,3 +120,30 @@ describe("RecommendationRequestSchema", () => {
     expect(RecommendationRequestSchema.safeParse({ ...base, timeMinutes: 120 }).success).toBe(true);
   });
 });
+
+describe("validateOutput accents and Filipino terms", () => {
+  const ids = new Set(["a"]);
+  const reply = (why: string) => ({ picks: [{ id: "a", why }] });
+  it.each(["Not a délay.", "Not an ÁDHD.", "Naantala ang pag-unlad.", "May kapansanan siya.", "Dahil sa pagkaantala."])(
+    "rejects %s",
+    (why) => expect(validateOutput(reply(why), ids, 1)).toBeNull()
+  );
+  it("keeps accented Filipino play wording", () => {
+    expect(validateOutput(reply("Magandang umaga, sabay tayong maglaro ng niño."), ids, 1)).toHaveLength(1);
+  });
+});
+
+// Known gaps, documented so the limits stay visible. Each must start failing the day the check is improved.
+describe("validateOutput known gaps", () => {
+  const ids = new Set(["a"]);
+  const reply = (why: string) => ({ picks: [{ id: "a", why }] });
+  it.fails("catches a term split by a space", () => {
+    expect(validateOutput(reply("Not a de lay."), ids, 1)).toBeNull();
+  });
+  it.fails("catches a term with digits instead of letters", () => {
+    expect(validateOutput(reply("Not a d3lay."), ids, 1)).toBeNull();
+  });
+  it.fails("catches Hiligaynon diagnostic terms", () => {
+    expect(validateOutput(reply("Nalaga ang pag-uswag."), ids, 1)).toBeNull();
+  });
+});
