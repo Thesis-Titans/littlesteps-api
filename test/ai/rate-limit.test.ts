@@ -12,7 +12,7 @@ vi.mock("firebase-admin/auth", () => ({
 
 import { app } from "../../src/app.js";
 import { setAiProvider } from "../../src/ai/ai-router.js";
-import { createMemoryRateLimiter, setIpRateLimiter, setRateLimiter, type RateLimiter } from "../../src/ai/rate-limit.js";
+import { createIpRateLimiter, createMemoryRateLimiter, parseIpLimit, parseTrustProxyHops, setIpRateLimiter, setRateLimiter, type RateLimiter } from "../../src/ai/rate-limit.js";
 import { FakeProvider } from "../../src/ai/providers/fake.js";
 import { setApprovedActivitiesForTest, setCatalogActivities } from "../../src/catalog/catalog-service.js";
 import { approved, baseRequest } from "./helpers.js";
@@ -104,5 +104,20 @@ describe("AI recommendations rate limit", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     expect((await post("uid-a")).status).toBe(200);
     expect(warn).toHaveBeenCalledWith(JSON.stringify({ event: "ai.rate_limit_unavailable" }));
+  });
+});
+
+describe("rate limit env parsing and disabled IP cap", () => {
+  it("parses AI_IP_LIMIT_PER_HOUR", () => {
+    expect([undefined, "", "5", " 7 ", "0", "-1", "abc", "1.5"].map(parseIpLimit)).toEqual([30, 30, 5, 7, 0, 30, 30, 30]);
+  });
+  it("parses TRUST_PROXY_HOPS", () => {
+    expect([undefined, "", "0", "2", "-1", "x", "1.5"].map(parseTrustProxyHops)).toEqual([1, 1, 0, 2, 1, 1, 1]);
+  });
+  it("counts no IP when the limit is 0", async () => {
+    expect(createIpRateLimiter(0)).toBeNull();
+    expect(createIpRateLimiter(3)).not.toBeNull();
+    setIpRateLimiter(createIpRateLimiter(0));
+    for (let i = 0; i < 12; i++) expect((await post(`uid-${i}`)).status).toBe(200);
   });
 });

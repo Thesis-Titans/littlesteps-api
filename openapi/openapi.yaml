@@ -231,7 +231,8 @@ paths:
         catalog ranking (tier 3). With no reviewed content the response is 200 with an empty list.
         Responses are never cached.
 
-        Rate limit: 10 requests per signed-in user and 30 per IP address in each clock hour
+        Rate limit: 10 requests per signed-in user and, by default, 30 per IP address (configurable; 0 disables
+        the per-IP cap) in each clock hour
         (fixed window, UTC). Every authenticated request counts, including ones rejected as
         invalid. Over the limit the response is 429 with Retry-After set to the seconds left in
         the window. If the limit store is unavailable the request is allowed.

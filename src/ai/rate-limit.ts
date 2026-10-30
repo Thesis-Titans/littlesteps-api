@@ -6,6 +6,14 @@ export const WINDOW_MS = 60 * 60 * 1000;
 export const USER_LIMIT = 10;
 export const IP_LIMIT = 30;
 
+const nonNegativeInt = (raw: string | undefined, fallback: number): number =>
+  raw !== undefined && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : fallback;
+
+/** AI_IP_LIMIT_PER_HOUR: default 30, 0 disables the per-IP cap, invalid values fall back to 30. */
+export const parseIpLimit = (raw: string | undefined): number => nonNegativeInt(raw, IP_LIMIT);
+/** TRUST_PROXY_HOPS: default 1, integer >= 0, invalid values fall back to 1. */
+export const parseTrustProxyHops = (raw: string | undefined): number => nonNegativeInt(raw, 1);
+
 export interface RateLimitResult {
   allowed: boolean;
   /** Real seconds until the current window ends. */
@@ -69,7 +77,9 @@ export function createFirestoreRateLimiter(limit: number, now: Clock = Date.now)
 
 // Per-user limiter has no default here: index.ts wires the Firestore one, tests inject their own.
 let userLimiter: RateLimiter | null = null;
-let ipLimiter: RateLimiter | null = createMemoryRateLimiter(IP_LIMIT);
+/** A limit of 0 disables the per-IP cap: no limiter, so no IP is counted at all. */
+export const createIpRateLimiter = (limit: number): RateLimiter | null => (limit > 0 ? createMemoryRateLimiter(limit) : null);
+let ipLimiter: RateLimiter | null = createIpRateLimiter(parseIpLimit(process.env.AI_IP_LIMIT_PER_HOUR));
 
 export function setRateLimiter(next: RateLimiter | null): void {
   userLimiter = next;
