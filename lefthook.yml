@@ -1,0 +1,42 @@
+# Lefthook configuration for LittleSteps monorepo
+# Docs: https://github.com/evilmartians/lefthook
+# Runs pre-commit checks in parallel across all active repos.
+
+pre-commit:
+  parallel: true
+  commands:
+    api-lint:
+      root: "littlesteps-api/"
+      glob: "*.{ts,json}"
+      run: npm run lint --silent
+    api-typecheck:
+      root: "littlesteps-api/"
+      glob: "*.ts"
+      run: npm run typecheck --silent
+    react-lint:
+      root: "littlesteps-react/"
+      glob: "*.{ts,tsx,json}"
+      run: npm run lint --silent
+    react-typecheck:
+      root: "littlesteps-react/"
+      glob: "*.{ts,tsx}"
+      run: npm run typecheck --silent
+    flutter-analyze:
+      root: "littlesteps-flutter/"
+      glob: "*.dart"
+      run: flutter analyze --no-pub
+    docs-verify:
+      root: "littlesteps-docs/"
+      glob: "docs/**/*.md"
+      run: node scripts/verify-docs.mjs
+    secret-scan:
+      run: >
+        gitleaks detect
+        --source .
+        --no-banner
+        --exit-code 1
+      fail_text: |
+        🔴 Gitleaks detected a potential secret in your staged files.
+        Review the output above, remove credentials, and re-stage.
+        If this is a false positive, add an inline comment: gitleaks:allow
+

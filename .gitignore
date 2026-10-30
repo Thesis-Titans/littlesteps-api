@@ -8,3 +8,10 @@ coverage/
 .firebaserc
 .DS_Store
 *-debug.log
+
+# Firebase local debug logs
+firebase-debug*.log
+firestore-debug*.log
+database-debug*.log
+repomix-*.xml
+

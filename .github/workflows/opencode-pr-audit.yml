@@ -1,0 +1,63 @@
+name: OpenCode PR Audit
+
+# Runs a read-only AI security & quality audit on pull requests to littlesteps-api.
+# Uses claude-3-5-haiku for cost efficiency (<$0.01 per run).
+# Teammates can also trigger manually by commenting "/oc review" on any PR.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr_audit:
+    name: OpenCode QA Audit (Backend)
+    runs-on: ubuntu-latest
+
+    # Only run on PRs (opened/synced) OR explicit "/oc review" comment on a PR
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != '' &&
+       (contains(github.event.comment.body, '/oc review') ||
+        contains(github.event.comment.body, '/opencode review')))
+
+    steps:
+      - name: Checkout repository (shallow fetch to limit context tokens)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run OpenCode Backend QA Audit
+        uses: anomalyco/opencode/github@latest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          model: anthropic/claude-3-5-haiku
+          agent: backend-reviewer
+          prompt: |
+            You are the backend-qa-reviewer for LittleSteps API.
+            Audit ONLY the files changed in this PR against .claude/agents/backend-qa-reviewer.md.
+
+            Check the following and output a structured Markdown table:
+            1. BOLA: Does accessing a child resource not owned by the authenticated caregiver return 404 RESOURCE_NOT_FOUND (not 403)?
+            2. OpenAPI Sync: Do route parameters, request bodies, and error responses match openapi/openapi.yaml?
+            3. Validation: Are inputs bounded by Zod schemas at the controller boundary?
+            4. Error Envelopes: Do errors follow { error: { code, message } } format?
+            5. Secret Safety: Are .env values, Firebase tokens, or service account keys never logged or committed?
+
+            Format your output as:
+            ## 🔍 OpenCode QA Audit Report
+
+            | Check | Status | File:Line | Notes |
+            |-------|--------|-----------|-------|
+            ...
+
+            End with a one-line summary: ✅ Ready for Tech Lead review / ⚠️ Fixes needed before merge.
+
