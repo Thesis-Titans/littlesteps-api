@@ -202,4 +202,30 @@ describe("children routes", () => {
       expect(res.status).toBe(404);
     }
   });
+
+  it("update on a missing child returns 404 and creates nothing", async () => {
+    expect(await store.update("uid-a", MISSING, (c) => c)).toBeNull();
+    const res = await request(app).patch(`/api/v1/children/${MISSING}`).set("Authorization", A).send({ nickname: "x" });
+    expect(res.status).toBe(404);
+    expect(store.data.size).toBe(0);
+  });
+
+  it("accepts 71 months and rejects 72 months and future months", async () => {
+    expect((await create(A, { nickname: "Edge", birthMonthYear: monthsAgo(71) })).status).toBe(201);
+    expect((await create(A, { nickname: "Edge", birthMonthYear: monthsAgo(72) })).status).toBe(422);
+    expect((await create(A, { nickname: "Edge", birthMonthYear: monthsAgo(-1) })).status).toBe(422);
+  });
+
+  it("gives identical 400 and 422 bodies for own, foreign and unknown ids", async () => {
+    const own = (await create(A, { nickname: "Mine", ageBand: "0-5m" })).body.id as string;
+    for (const payload of [{ nickname: "" }, { birthMonthYear: monthsAgo(72) }]) {
+      const res = await Promise.all([own, MISSING].map((id) => request(app).patch(`/api/v1/children/${id}`).set("Authorization", B).send(payload)));
+      const ownerRes = await request(app).patch(`/api/v1/children/${own}`).set("Authorization", A).send(payload);
+      expect([400, 422]).toContain(ownerRes.status);
+      for (const r of res) {
+        expect(r.status).toBe(ownerRes.status);
+        expect(r.body).toEqual(ownerRes.body);
+      }
+    }
+  });
 });

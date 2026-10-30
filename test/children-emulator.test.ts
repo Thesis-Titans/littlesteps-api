@@ -68,4 +68,17 @@ describe("children API against the Auth and Firestore emulators", () => {
     expect(patch.status).toBe(404);
     expect((await request(app).get(`/api/v1/children/${child.id}`).set(authB)).body.nickname).toBe("Theirs");
   });
+
+  it("keeps both fields when two PATCHes run concurrently", async () => {
+    const a = await signUp();
+    const auth = { Authorization: `Bearer ${a.idToken}` };
+    const id = (await request(app).post("/api/v1/children").set(auth).send({ nickname: "Before", ageBand: "0-5m" })).body.id as string;
+    const [r1, r2] = await Promise.all([
+      request(app).patch(`/api/v1/children/${id}`).set(auth).send({ nickname: "After" }),
+      request(app).patch(`/api/v1/children/${id}`).set(auth).send({ ageBand: "24-35m" })
+    ]);
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    const got = (await request(app).get(`/api/v1/children/${id}`).set(auth)).body;
+    expect(got).toMatchObject({ nickname: "After", ageBand: "24-35m" });
+  });
 });

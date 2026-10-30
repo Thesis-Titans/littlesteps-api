@@ -228,7 +228,6 @@ paths:
         given, the server derives the band from its UTC calendar month. A future
         month, or one more than 71 months ago, returns 422 UNPROCESSABLE_ENTITY. Months are counted in UTC as (current year x 12 + current month) - (birth year x 12 + birth month); 0 to 71 inclusive is accepted.
       x-implementation-status: implemented
-      x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
       requestBody:
@@ -265,9 +264,9 @@ paths:
         Unpaginated JSON array ordered by createdAt, then id.
         Query only the verified UID's caregiver path; never list globally and
         filter in the client. An account without children receives an empty array.
-        Pagination is not provided.
+        Pagination is not provided. At most 50 children are returned; no
+        per-caregiver cap on creation has been decided.
       x-implementation-status: implemented
-      x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
       responses:
@@ -308,7 +307,6 @@ paths:
         verify caregiverId matches that UID, and expose no profile until authorized.
         Cross-owner substitution, nonexistent IDs and malformed IDs have identical 404 responses.
       x-implementation-status: implemented
-      x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
       responses:
@@ -333,7 +331,6 @@ paths:
         The body is a plain application/json partial update, not JSON Merge
         Patch (RFC 7396 gives null the meaning remove). Nulls are rejected with 400.
       x-implementation-status: implemented
-      x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
       requestBody:

@@ -76,10 +76,8 @@ childrenRouter.patch("/:childId", async (request, response) => {
   const id = idOf(request);
   const now = new Date();
   if (!rangeCheck(response, parsed.data.birthMonthYear, now)) return;
-  const current = id && (await getStore().get(uidOf(request), id));
-  if (!current) return void notFound(response);
-  const next = applyUpdate(current, parsed.data, now);
-  await getStore().replace(uidOf(request), next);
+  const next = id && (await getStore().update(uidOf(request), id, (current) => applyUpdate(current, parsed.data, now)));
+  if (!next) return void notFound(response);
   response.status(200).json(toPublic(next, now));
 });
 

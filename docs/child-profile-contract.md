@@ -123,9 +123,10 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
 | `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range |
 
-Paths follow the existing `/api/v1` prefix but remain proposed. A profile object
+Paths follow the existing `/api/v1` prefix. The child routes are implemented; only D5 (deletion execution) and D6 (retention) remain open. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
-pagination are unspecified. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
+pagination are unspecified. A caregiver's list returns at most 50 children; no per-caregiver cap on creation has been decided.
+Validation errors (400/422) are returned before the ownership lookup and do not depend on the target id, so they reveal nothing about whether a child exists. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
 The envelope is a deliberate deviation from RFC 9457 problem details (RFC 9457
 section 4 allows an application to carry errors in a format it already defines);
 the cheapest later change is `application/problem+json`. Error responses send
