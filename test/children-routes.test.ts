@@ -49,6 +49,22 @@ describe("children routes", () => {
     expect(res.body.error.code).toBe("INTERNAL_ERROR");
   });
 
+  it.each([[10], ["aborted"]])("returns 503 with Retry-After when update is aborted (code %s)", async (code) => {
+    vi.spyOn(store, "update").mockRejectedValueOnce(Object.assign(new Error("contention"), { code }));
+    const res = await request(app).patch(`/api/v1/children/${MISSING}`).set("Authorization", A).send({ nickname: "x" });
+    expect(res.status).toBe(503);
+    expect(res.headers["retry-after"]).toBe("1");
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.body).toEqual({ error: { code: "SERVICE_UNAVAILABLE", message: "Please try again in a moment." } });
+  });
+
+  it("still returns 500 for other update errors", async () => {
+    vi.spyOn(store, "update").mockRejectedValueOnce(Object.assign(new Error("boom"), { code: 13 }));
+    const res = await request(app).patch(`/api/v1/children/${MISSING}`).set("Authorization", A).send({ nickname: "x" });
+    expect(res.status).toBe(500);
+    expect(res.body.error.code).toBe("INTERNAL_ERROR");
+  });
+
   it("returns 401 without a valid token on every route", async () => {
     for (const r of [
       request(app).get("/api/v1/children"),

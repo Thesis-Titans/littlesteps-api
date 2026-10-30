@@ -3,8 +3,8 @@ info:
   title: LittleSteps API
   version: 0.2.0
   description: >-
-    Health, identity and learning-catalog endpoints are implemented. Child-profile
-    operations are a reviewable design contract for Issue 7, not implemented routes.
+    Health, identity, learning-catalog and child-profile (create, list, read, update)
+    endpoints are implemented. Child deletion and rate limiting are not implemented.
     Open decisions D5 (deletion execution) and D6 (production retention) in
     docs/child-profile-contract.md block only the deletion API and production
     deployment, not Issue 8.
@@ -243,7 +243,7 @@ paths:
                 value: { nickname: Sample Child, ageBand: 12-23m }
       responses:
         '201':
-          description: Proposed created profile; contains no internal caregiver UID.
+          description: Created profile; contains no internal caregiver UID.
           content:
             application/json:
               schema:
@@ -351,7 +351,7 @@ paths:
                 value: { birthMonthYear: '2025-07' }
       responses:
         '200':
-          description: Proposed updated profile with server-assigned updatedAt.
+          description: Updated profile with server-assigned updatedAt.
           content:
             application/json:
               schema:
@@ -373,6 +373,8 @@ paths:
           $ref: '#/components/responses/ChildNotFound'
         '422':
           $ref: '#/components/responses/UnprocessableAge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 components:
   schemas:
     ChildId:
@@ -458,7 +460,7 @@ components:
           format: date-time
           readOnly: true
       description: >-
-        Proposed public projection; caregiverId is internal. Optional birth month
+        Public projection; caregiverId is internal. Optional birth month
         is omitted when not supplied. No nulls or implicit defaults. UTC timestamps
         are serialized from internal Firestore timestamps. When birthMonthYear is
         present, ageBand is derived on read from the UTC calendar month; a child
@@ -662,7 +664,7 @@ components:
         updatedAt: '2026-10-29T08:00:00Z'
   responses:
     OwnedChild:
-      description: Proposed public projection of an owned child.
+      description: Public projection of an owned child.
       content:
         application/json:
           schema:
@@ -685,7 +687,7 @@ components:
             invalidOrExpired:
               value: { error: { code: UNAUTHENTICATED, message: A valid bearer token is required } }
     InvalidInput:
-      description: Proposed field or identifier validation failure, or existing malformed JSON error.
+      description: Field or identifier validation failure, or existing malformed JSON error.
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'
@@ -699,7 +701,7 @@ components:
             invalidJson:
               value: { error: { code: INVALID_JSON, message: Request body must be valid JSON } }
     ServiceUnavailable:
-      description: Transient conflict while creating; retry after a moment.
+      description: Transient conflict while creating or updating; retry after a moment.
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'
@@ -752,7 +754,7 @@ components:
       x-implementation-status: not-implemented
       description: >-
         Too many requests from this IP address or caller UID. Any endpoint may
-        return this. Wait Retry-After seconds before retrying. Proposed; rate
+        return this. Wait Retry-After seconds before retrying. Rate
         limiting is not implemented yet.
       headers:
         Retry-After:

@@ -59,6 +59,12 @@ const isAborted = (e: unknown) => {
   return code === 10 || (typeof code === "string" && code.toLowerCase() === "aborted");
 };
 
+const unavailable = (response: Response) =>
+  response
+    .status(503)
+    .set("Retry-After", "1")
+    .json({ error: { code: "SERVICE_UNAVAILABLE", message: "Please try again in a moment." } });
+
 childrenRouter.post("/", async (request, response) => {
   const parsed = CreateChildSchema.safeParse(request.body);
   if (!parsed.success) return void invalid(response, toErrorDetails(parsed.error));
@@ -70,10 +76,7 @@ childrenRouter.post("/", async (request, response) => {
     created = await getStore().create(uidOf(request), child);
   } catch (error) {
     if (!isAborted(error)) throw error;
-    return void response
-      .status(503)
-      .set("Retry-After", "1")
-      .json({ error: { code: "SERVICE_UNAVAILABLE", message: "Please try again in a moment." } });
+    return void unavailable(response);
   }
   if (!created) {
     return void response.status(422).json({
@@ -100,7 +103,13 @@ childrenRouter.patch("/:childId", async (request, response) => {
   const id = idOf(request);
   const now = new Date();
   if (!rangeCheck(response, parsed.data.birthMonthYear, now)) return;
-  const next = id && (await getStore().update(uidOf(request), id, (current) => applyUpdate(current, parsed.data, now)));
+  let next;
+  try {
+    next = id && (await getStore().update(uidOf(request), id, (current) => applyUpdate(current, parsed.data, now)));
+  } catch (error) {
+    if (!isAborted(error)) throw error;
+    return void unavailable(response);
+  }
   if (!next) return void notFound(response);
   response.status(200).json(toPublic(next, now));
 });
