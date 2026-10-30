@@ -45,14 +45,27 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 - `GET /health` — public liveness health check.
 - `GET /api/v1/me` — requires `Authorization: Bearer <Firebase ID token>` and returns the verified UID.
 
+### Implemented Catalog Endpoints (public, cacheable):
+- `GET /api/v1/catalog/activities` and `GET /api/v1/catalog/activities/{id}` — age-aware learning catalog (`public, max-age=3600`).
+- `GET /api/v1/catalog/books` — Open Library proxy with bounded query validation, allowlisted subjects, server-side cache (`X-Cache`) and offline fallback.
+
+All other routes, including errors, respond with `Cache-Control: no-store`.
+
 ### Planned Feature & Integration Endpoints (Sprint 1):
-- `POST /api/v1/children` & `GET /api/v1/children` — Child profile management with server-side UID ownership scoping (BOLA 404 response on unauthorized access).
-- `GET /api/v1/catalog/books` — External Open Library REST API proxy with bounded query validation and child-safe tag filters.
+- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). Design-only contract, see Status below.
 - `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
 ---
 
 ## Status & Pre-Feature Prerequisites
+
+Issue #7 defines a **proposed, unimplemented** child-profile contract in
+[OpenAPI](openapi/openapi.yaml): create/list at `/api/v1/children` and read/update
+at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs/child-profile-contract.md)
+for field mappings, synthetic examples, review gates (age rules decided; D1 mapping pending Mark) and privacy
+decisions. These routes are not available in the emulator yet; implementation
+belongs to Issue #8 after contract review.
+
 The following milestones must be completed before implementing feature endpoints:
 - Define the Firestore data schema and child ownership model.
 - Implement server-side ownership authorization for every child-scoped operation.

@@ -14,11 +14,19 @@ describe("LittleSteps API scaffold", () => {
     const response = await request(app).get("/api/v1/me");
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHENTICATED");
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   it("returns a consistent 404 envelope", async () => {
     const response = await request(app).get("/missing");
     expect(response.status).toBe(404);
-    expect(response.body.error.code).toBe("NOT_FOUND");
+    expect(response.body.error.code).toBe("RESOURCE_NOT_FOUND");
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("returns no-store on the error handler response", async () => {
+    const response = await request(app).post("/missing").set("Content-Type", "application/json").send("{bad");
+    expect(response.status).toBe(400);
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 });
