@@ -1,7 +1,9 @@
 name: OpenCode PR Audit
 
 # Runs a read-only AI security & quality audit on pull requests to littlesteps-api.
-# Uses claude-3-5-haiku for cost efficiency (<$0.01 per run).
+# Uses Google Gemini 2.5 Flash (FREE tier — 1,500 req/day, no credit card required).
+# Get a free GEMINI_API_KEY at: https://aistudio.google.com/apikey
+#
 # Teammates can also trigger manually by commenting "/oc review" on any PR.
 
 on:
@@ -34,12 +36,12 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Run OpenCode Backend QA Audit
+      - name: Run OpenCode Backend QA Audit (Gemini 2.5 Flash — Free)
         uses: anomalyco/opencode/github@latest
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          model: anthropic/claude-3-5-haiku
+          model: google/gemini-2.5-flash
           agent: backend-reviewer
           prompt: |
             You are the backend-qa-reviewer for LittleSteps API.
@@ -60,4 +62,3 @@ jobs:
             ...
 
             End with a one-line summary: ✅ Ready for Tech Lead review / ⚠️ Fixes needed before merge.
-
