@@ -45,9 +45,14 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 - `GET /health` — public liveness health check.
 - `GET /api/v1/me` — requires `Authorization: Bearer <Firebase ID token>` and returns the verified UID.
 
+### Implemented Catalog Endpoints (public, cacheable):
+- `GET /api/v1/catalog/activities` and `GET /api/v1/catalog/activities/{id}` — age-aware learning catalog (`public, max-age=3600`).
+- `GET /api/v1/catalog/books` — Open Library proxy with bounded query validation, allowlisted subjects, server-side cache (`X-Cache`) and offline fallback.
+
+All other routes, including errors, respond with `Cache-Control: no-store`.
+
 ### Planned Feature & Integration Endpoints (Sprint 1):
-- `POST /api/v1/children` & `GET /api/v1/children` — Child profile management with server-side UID ownership scoping (BOLA 404 response on unauthorized access).
-- `GET /api/v1/catalog/books` — External Open Library REST API proxy with bounded query validation and child-safe tag filters.
+- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). Design-only contract, see Status below.
 - `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
 ---

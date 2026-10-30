@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
+import { catalogRouter } from "./catalog/catalog-router.js";
 import { requireFirebaseUser } from "./middleware/require-firebase-user.js";
 
 const app = express();
@@ -13,6 +14,11 @@ const allowedOrigins = new Set(
 
 app.disable("x-powered-by");
 app.use(helmet());
+// Default for every route, including errors; the catalog router overrides it with its public caching.
+app.use((_request, response, next) => {
+  response.setHeader("Cache-Control", "no-store");
+  next();
+});
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.has(origin)) {
@@ -32,13 +38,15 @@ app.get("/health", (_request, response) => {
   response.status(200).json({ status: "ok" });
 });
 
+app.use("/api/v1/catalog", catalogRouter);
+
 app.get("/api/v1/me", requireFirebaseUser, (request, response) => {
   response.setHeader("Cache-Control", "no-store");
   response.status(200).json({ uid: request.firebaseUser!.uid });
 });
 
 app.use((_request, response) => {
-  response.status(404).json({ error: { code: "NOT_FOUND", message: "Resource not found" } });
+  response.status(404).json({ error: { code: "RESOURCE_NOT_FOUND", message: "Resource not found" } });
 });
 
 const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {

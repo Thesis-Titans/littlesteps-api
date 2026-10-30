@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: LittleSteps API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    Health and identity endpoints are implemented. Child-profile operations are
-    a reviewable design contract for Issue 7, not implemented routes. Remaining
-    decisions (D1, D4-D6) in docs/child-profile-contract.md must be resolved before Issue 8.
+    Health, identity and learning-catalog endpoints are implemented. Child-profile
+    operations are a reviewable design contract for Issue 7, not implemented routes.
+    Remaining decisions (D1, D4-D6) in docs/child-profile-contract.md must be
+    resolved before Issue 8.
 servers:
   - url: http://127.0.0.1:5001/{projectId}/asia-southeast1/api
     description: Firebase Functions emulator; replace projectId with the local Firebase project ID.
@@ -48,6 +49,170 @@ paths:
                     type: string
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /api/v1/catalog/activities:
+    get:
+      operationId: listCatalogActivities
+      summary: List and filter learning catalog activities, stories, rhymes, and games
+      description: |
+        Public read endpoint for age-aware catalog browsing (FR-04).
+        Returns activities filtered by age band, type, domain, language, or setting.
+        Unreviewed or synthetic engineering fixtures are explicitly labeled and cannot be presented as approved.
+      security: []
+      parameters:
+        - name: ageBand
+          in: query
+          required: false
+          description: Developmental age band
+          schema:
+            $ref: '#/components/schemas/AgeBand'
+        - name: type
+          in: query
+          required: false
+          description: Catalog resource type
+          schema:
+            $ref: '#/components/schemas/ActivityType'
+        - name: domain
+          in: query
+          required: false
+          description: Early childhood developmental domain
+          schema:
+            $ref: '#/components/schemas/Domain'
+        - name: language
+          in: query
+          required: false
+          description: Language of the activity
+          schema:
+            $ref: '#/components/schemas/Language'
+        - name: setting
+          in: query
+          required: false
+          description: Recommended setting
+          schema:
+            $ref: '#/components/schemas/Setting'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum items to return (default 20, max 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Filtered catalog items
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, items]
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CatalogActivity'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/catalog/activities/{id}:
+    get:
+      operationId: getCatalogActivityById
+      summary: Retrieve a single catalog activity by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Canonical activity ID
+          schema:
+            type: string
+            maxLength: 64
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        '200':
+          description: Catalog item found
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogActivity'
+        '400':
+          description: Invalid activity id format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Item not found in catalog (code RESOURCE_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/catalog/books:
+    get:
+      operationId: listCatalogBooks
+      summary: Query picture books catalog from Open Library with caching and fallback
+      description: |
+        Proxy to Open Library REST API with server-side 1-hour in-memory cache and offline fallback (api-reference.md §5.1, ADR-010).
+      security: []
+      parameters:
+        - name: subject
+          in: query
+          required: false
+          description: Book subject (allowlist)
+          schema:
+            type: string
+            maxLength: 64
+            enum: [picture_books, bedtime, colors, animals]
+            default: picture_books
+        - name: limit
+          in: query
+          required: false
+          description: Maximum books to return (default 12, max 30)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 12
+      responses:
+        '200':
+          description: Picture book list with provenance. Fallback responses use max-age=60.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+            X-Cache:
+              description: Whether the response was served from the server-side cache
+              schema:
+                type: string
+                enum: [HIT, MISS]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooksResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/children:
     post:
       operationId: createChild
@@ -314,6 +479,166 @@ components:
                   issue:
                     type: string
       description: Existing safe error envelope; never includes resource metadata or token details.
+    ActivityType:
+      type: string
+      enum:
+        - activity
+        - story
+        - rhyme
+        - game
+
+    Domain:
+      type: string
+      enum:
+        - cognitive
+        - motor
+        - language
+        - socioEmotional
+
+    Language:
+      type: string
+      enum:
+        - en
+        - fil
+        - hil
+
+    Setting:
+      type: string
+      enum:
+        - indoor
+        - outdoor
+        - either
+
+    ReviewStatus:
+      type: string
+      enum:
+        - reviewed_approved
+        - synthetic_fixture
+        - draft
+
+    CatalogActivity:
+      type: object
+      required:
+        - id
+        - title
+        - type
+        - language
+        - setting
+        - ageBand
+        - domain
+        - durationMinutes
+        - durationEstimate
+        - materials
+        - instructions
+        - provenanceSource
+        - status
+        - limitations
+      properties:
+        id:
+          type: string
+          example: act-ph-bahay-bahayan-01
+        title:
+          type: string
+          maxLength: 100
+          example: Bahay-Bahayan Pretend Play
+        type:
+          $ref: '#/components/schemas/ActivityType'
+        language:
+          $ref: '#/components/schemas/Language'
+        setting:
+          $ref: '#/components/schemas/Setting'
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        domain:
+          $ref: '#/components/schemas/Domain'
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+          example: 15
+        durationEstimate:
+          type: string
+          example: 10-15 mins
+        materials:
+          type: array
+          items:
+            type: string
+          example: ["blanket", "cushions"]
+        instructions:
+          type: array
+          items:
+            type: string
+          example:
+            - Set up cushions or chairs to form walls.
+            - Drape a light blanket to create a roof.
+            - Encourage child to act out everyday household routines.
+        provenanceSource:
+          type: string
+          example: Synthetic engineering fixture; no external source
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        limitations:
+          type: string
+          example: Provisional Academic Reference — Pending Review. Educational prompt only; not a diagnostic assessment.
+
+    BookItem:
+      type: object
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+        - subjects
+      properties:
+        id:
+          type: string
+          example: OL7835968W
+        title:
+          type: string
+          example: The Very Hungry Caterpillar
+        authors:
+          type: array
+          items:
+            type: string
+          example: ["Eric Carle"]
+        coverUrl:
+          type: [string, "null"]
+          example: https://covers.openlibrary.org/b/id/7835968-M.jpg
+        subjects:
+          type: array
+          items:
+            type: string
+          example: ["Caterpillars", "Metamorphosis", "Picture books"]
+
+    BooksResponse:
+      type: object
+      required:
+        - subject
+        - totalCount
+        - books
+        - provenance
+      properties:
+        subject:
+          type: string
+          example: picture_books
+        totalCount:
+          type: integer
+          example: 12
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookItem'
+        provenance:
+          type: object
+          required:
+            - source
+          properties:
+            source:
+              type: string
+              example: Open Library (Internet Archive)
+            license:
+              type: string
+              example: "Metadata: Open Library, CC0"
   examples:
     Child:
       summary: Synthetic profile; age shown as of October 2026.

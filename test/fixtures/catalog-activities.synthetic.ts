@@ -1,0 +1,144 @@
+import type { CatalogActivity } from "../../src/catalog/types.js";
+
+export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
+  {
+    id: "act-synth-001",
+    title: "Tummy Time Mirror Play",
+    type: "activity",
+    language: "fil",
+    setting: "indoor",
+    ageBand: "0-5m",
+    domain: "motor",
+    durationMinutes: 10,
+    durationEstimate: "5-10 mins",
+    materials: ["unbreakable mirror", "soft blanket"],
+    instructions: [
+      "Place baby gently on their tummy on a firm blanket.",
+      "Position an unbreakable mirror in their direct line of sight.",
+      "Gently talk or sing to encourage lifting their head to see their reflection."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-002",
+    title: "Pen-pen de Sarapen Rhythm Clap",
+    type: "rhyme",
+    language: "fil",
+    setting: "either",
+    ageBand: "6-11m",
+    domain: "language",
+    durationMinutes: 5,
+    durationEstimate: "5 mins",
+    materials: ["none"],
+    instructions: [
+      "Sit face-to-face with the infant on your lap.",
+      "Clap hands gently in cadence to the traditional rhyme Pen-pen de Sarapen.",
+      "Gently tap baby's palms together during the chorus to encourage clapping reflex."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-003",
+    title: "Cushion Mountain Crawl",
+    type: "activity",
+    language: "en",
+    setting: "indoor",
+    ageBand: "12-23m",
+    domain: "motor",
+    durationMinutes: 15,
+    durationEstimate: "10-15 mins",
+    materials: ["couch cushions", "pillows"],
+    instructions: [
+      "Arrange 2 to 3 floor pillows or cushions on a carpeted floor.",
+      "Encourage the toddler to crawl over the gentle incline toward a favorite toy.",
+      "Stay close to spot and praise balance and spatial coordination."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-004",
+    title: "Bahay-Bahayan Household Role Play",
+    type: "game",
+    language: "fil",
+    setting: "indoor",
+    ageBand: "24-35m",
+    domain: "socioEmotional",
+    durationMinutes: 20,
+    durationEstimate: "15-20 mins",
+    materials: ["blanket", "plastic bowls", "wooden spoons"],
+    instructions: [
+      "Drape a sheet or blanket across two sturdy chairs to build a play house.",
+      "Provide clean plastic bowls and spoons for pretend meal preparation.",
+      "Join the pretend play, asking questions like 'Ano ang niluluto natin ngayon?'"
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-005",
+    title: "Household Sorting Challenge",
+    type: "activity",
+    language: "en",
+    setting: "indoor",
+    ageBand: "36-47m",
+    domain: "cognitive",
+    durationMinutes: 15,
+    durationEstimate: "10-15 mins",
+    materials: ["clean plastic containers", "colored socks or large buttons"],
+    instructions: [
+      "Set out two containers labeled with colors (e.g., white socks vs colored socks).",
+      "Demonstrate placing one item in each container.",
+      "Invite the child to sort the remaining pile by color or size."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-006",
+    title: "Si Pilimon Folk Tale & Movement",
+    type: "story",
+    language: "hil",
+    setting: "either",
+    ageBand: "48-59m",
+    domain: "language",
+    durationMinutes: 10,
+    durationEstimate: "10 mins",
+    materials: ["none"],
+    instructions: [
+      "Sing or narrate the traditional story of Si Pilimon, nagpanagat sa kadagatan.",
+      "Imitate fishing and rowing movements together.",
+      "Discuss what kinds of fish live in Philippine waters."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-007",
+    title: "Piko Hopscotch Coordination",
+    type: "game",
+    language: "fil",
+    setting: "outdoor",
+    ageBand: "60-71m",
+    domain: "motor",
+    durationMinutes: 20,
+    durationEstimate: "15-20 mins",
+    materials: ["sidewalk chalk", "flat stone or beanbag"],
+    instructions: [
+      "Draw a simplified 6-square hopscotch (Piko) layout on a safe outdoor pavement.",
+      "Have the child toss the beanbag into square 1 and hop over it on one foot.",
+      "Turn around at the end and hop back, picking up the marker on the return."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  }
+];
