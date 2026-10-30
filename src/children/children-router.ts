@@ -53,13 +53,29 @@ childrenRouter.get("/", async (request, response) => {
   response.status(200).json(children.map((c) => toPublic(c, now)));
 });
 
+// Firestore ABORTED (gRPC 10): the transaction lost contention after the SDK's retries.
+const isAborted = (e: unknown) => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return code === 10 || (typeof code === "string" && code.toLowerCase() === "aborted");
+};
+
 childrenRouter.post("/", async (request, response) => {
   const parsed = CreateChildSchema.safeParse(request.body);
   if (!parsed.success) return void invalid(response, toErrorDetails(parsed.error));
   const now = new Date();
   if (!rangeCheck(response, parsed.data.birthMonthYear, now)) return;
   const child = toStored(parsed.data, uidOf(request), randomUUID(), now);
-  if (!(await getStore().create(uidOf(request), child))) {
+  let created: boolean;
+  try {
+    created = await getStore().create(uidOf(request), child);
+  } catch (error) {
+    if (!isAborted(error)) throw error;
+    return void response
+      .status(503)
+      .set("Retry-After", "1")
+      .json({ error: { code: "SERVICE_UNAVAILABLE", message: "Please try again in a moment." } });
+  }
+  if (!created) {
     return void response.status(422).json({
       error: {
         code: "UNPROCESSABLE_ENTITY",

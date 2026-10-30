@@ -118,7 +118,7 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
-| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range or 20-child limit reached |
+| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range or 20-child limit reached; 503 transient conflict while creating, retry after a moment |
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
 | `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range |
@@ -126,6 +126,7 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 Paths follow the existing `/api/v1` prefix. The child routes are implemented; only D5 (deletion execution) and D6 (retention) remain open. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
 pagination are unspecified. A caregiver can have at most 20 children (decision 2026-10-30). Creating a 21st returns `422 UNPROCESSABLE_ENTITY` with message `You can add up to 20 children.` and details `[{ "field": "children", "issue": "Limit of 20 children reached" }]`; the count and create are one transaction, so concurrent requests cannot exceed 20. The list returns children ordered by creation time (document ID breaks ties); its limit of 50 is now only a safety bound, since a caregiver can never have more than 20.
+Under heavy contention the create transaction can be aborted; the API then returns `503 SERVICE_UNAVAILABLE` (`Please try again in a moment.`) with `Retry-After: 1` and `Cache-Control: no-store`, and the client may retry. Nothing is written in that case.
 Validation errors (400/422) are returned before the ownership lookup and do not depend on the target id, so they reveal nothing about whether a child exists. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
 The envelope is a deliberate deviation from RFC 9457 problem details (RFC 9457
 section 4 allows an application to carry errors in a format it already defines);

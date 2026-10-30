@@ -257,6 +257,8 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/UnprocessableAge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     get:
       operationId: listChildren
       summary: List owned child profiles
@@ -696,6 +698,20 @@ components:
               value: { error: { code: INVALID_INPUT, message: Request fields are invalid } }
             invalidJson:
               value: { error: { code: INVALID_JSON, message: Request body must be valid JSON } }
+    ServiceUnavailable:
+      description: Transient conflict while creating; retry after a moment.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheControlNoStore'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            conflict:
+              value: { error: { code: SERVICE_UNAVAILABLE, message: Please try again in a moment. } }
     UnprocessableAge:
       description: >-
         Birth month is in the future or implies an age over 71 months, or (POST
@@ -755,6 +771,12 @@ components:
             rateLimited:
               value: { error: { code: RATE_LIMITED, message: Too many requests } }
   headers:
+    RetryAfter:
+      description: Seconds to wait before retrying (RFC 9110 section 10.2.3).
+      schema:
+        type: integer
+        minimum: 0
+        example: 1
     CacheControlNoStore:
       description: >-
         Always no-store on errors (RFC 9111 section 5.2.2.5). RFC 9110 section
