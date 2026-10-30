@@ -12,6 +12,7 @@ vi.mock("firebase-admin/auth", () => ({
 
 import { app } from "../../src/app.js";
 import { setAiProvider } from "../../src/ai/ai-router.js";
+import { setIpRateLimiter, setRateLimiter } from "../../src/ai/rate-limit.js";
 import { recommend } from "../../src/ai/ai-service.js";
 import { FakeProvider } from "../../src/ai/providers/fake.js";
 import { getApprovedActivities, setApprovedActivitiesForTest, setCatalogActivities } from "../../src/catalog/catalog-service.js";
@@ -25,6 +26,8 @@ const post = (body: unknown, token: string | null = "good") => {
 };
 
 beforeEach(() => {
+  setRateLimiter(null);
+  setIpRateLimiter(null);
   vi.spyOn(console, "info").mockImplementation(() => undefined);
   setApprovedActivitiesForTest([approved({ id: "a" }), approved({ id: "b", durationMinutes: 5 })]);
 });
