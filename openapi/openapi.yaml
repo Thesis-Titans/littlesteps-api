@@ -3,8 +3,9 @@ info:
   title: LittleSteps API
   version: 0.2.0
   description: >-
-    Health, identity, learning-catalog and AI recommendation endpoints are implemented. Child-profile
-    operations are a reviewable design contract for Issue 7, not implemented routes.
+    Health, identity, learning-catalog, child-profile (create, list, read, update) and
+    AI recommendations (deterministic fallback only) endpoints are implemented. Child
+    deletion and rate limiting are not implemented.
     Open decisions D5 (deletion execution) and D6 (production retention) in
     docs/child-profile-contract.md block only the deletion API and production
     deployment, not Issue 8.
@@ -259,15 +260,14 @@ paths:
   /api/v1/children:
     post:
       operationId: createChild
-      summary: Create an owned child profile (design only)
+      summary: Create an owned child profile
       description: >-
-        Proposed operation, not implemented. The server assigns a UUIDv4,
+        The server assigns a UUIDv4,
         caregiverId from the verified token UID, and UTC timestamps. No
         client-supplied identity establishes ownership. When birthMonthYear is
         given, the server derives the band from its UTC calendar month. A future
         month, or one more than 71 months ago, returns 422 UNPROCESSABLE_ENTITY. Months are counted in UTC as (current year x 12 + current month) - (birth year x 12 + birth month); 0 to 71 inclusive is accepted.
-      x-implementation-status: not-implemented
-      x-contract-status: proposed-pending-review
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       requestBody:
@@ -283,7 +283,7 @@ paths:
                 value: { nickname: Sample Child, ageBand: 12-23m }
       responses:
         '201':
-          description: Proposed created profile; contains no internal caregiver UID.
+          description: Created profile; contains no internal caregiver UID.
           content:
             application/json:
               schema:
@@ -297,16 +297,18 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/UnprocessableAge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     get:
       operationId: listChildren
-      summary: List owned child profiles (design only)
+      summary: List owned child profiles
       description: >-
-        Proposed unpaginated JSON array for the first slice, not implemented.
+        Unpaginated JSON array ordered by createdAt, then id.
         Query only the verified UID's caregiver path; never list globally and
         filter in the client. An account without children receives an empty array.
-        Pagination and ordering are not promised by this draft.
-      x-implementation-status: not-implemented
-      x-contract-status: proposed-pending-review
+        Pagination is not provided. A caregiver can have at most 20 children;
+        the list bound of 50 is only a safety limit.
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       responses:
@@ -341,29 +343,26 @@ paths:
           $ref: '#/components/schemas/ChildId'
     get:
       operationId: getChild
-      summary: Read an owned child profile (design only)
+      summary: Read an owned child profile
       description: >-
-        Not implemented. Resolve the ID within the verified UID's child path,
+        Resolve the ID within the verified UID's child path,
         verify caregiverId matches that UID, and expose no profile until authorized.
-        Cross-owner substitution and nonexistent IDs have identical 404 responses.
-      x-implementation-status: not-implemented
-      x-contract-status: proposed-pending-review
+        Cross-owner substitution, nonexistent IDs and malformed IDs have identical 404 responses.
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       responses:
         '200':
           $ref: '#/components/responses/OwnedChild'
-        '400':
-          $ref: '#/components/responses/InvalidInput'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/ChildNotFound'
     patch:
       operationId: updateChild
-      summary: Update an owned child profile (design only)
+      summary: Update an owned child profile
       description: >-
-        Proposed partial update, not implemented. Send nickname and/or exactly
+        Partial update. Send nickname and/or exactly
         one age source (birthMonthYear or ageBand), validated as on create, so
         caregivers can correct age (right to rectification). Supplying an age
         source replaces the previous one: birthMonthYear stores the month and the
@@ -373,8 +372,7 @@ paths:
 
         The body is a plain application/json partial update, not JSON Merge
         Patch (RFC 7396 gives null the meaning remove). Nulls are rejected with 400.
-      x-implementation-status: not-implemented
-      x-contract-status: proposed-pending-review
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       requestBody:
@@ -393,7 +391,7 @@ paths:
                 value: { birthMonthYear: '2025-07' }
       responses:
         '200':
-          description: Proposed updated profile with server-assigned updatedAt.
+          description: Updated profile with server-assigned updatedAt.
           content:
             application/json:
               schema:
@@ -415,6 +413,8 @@ paths:
           $ref: '#/components/responses/ChildNotFound'
         '422':
           $ref: '#/components/responses/UnprocessableAge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 components:
   schemas:
     ChildId:
@@ -429,7 +429,10 @@ components:
       description: >-
         Nickname only. The server trims leading and trailing whitespace and
         collapses internal whitespace runs to one space (decision D4), then
-        rejects an empty result; whitespace-only values are invalid.
+        rejects an empty result; whitespace-only values are invalid. Unicode
+        control and format characters (for example a zero-width space) are also
+        rejected. The `pattern` checks only for a non-space character; the
+        server enforces the character rule.
     BirthMonthYear:
       type: string
       pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
@@ -500,7 +503,7 @@ components:
           format: date-time
           readOnly: true
       description: >-
-        Proposed public projection; caregiverId is internal. Optional birth month
+        Public projection; caregiverId is internal. Optional birth month
         is omitted when not supplied. No nulls or implicit defaults. UTC timestamps
         are serialized from internal Firestore timestamps. When birthMonthYear is
         present, ageBand is derived on read from the UTC calendar month; a child
@@ -783,7 +786,7 @@ components:
         updatedAt: '2026-10-29T08:00:00Z'
   responses:
     OwnedChild:
-      description: Proposed public projection of an owned child.
+      description: Public projection of an owned child.
       content:
         application/json:
           schema:
@@ -806,7 +809,7 @@ components:
             invalidOrExpired:
               value: { error: { code: UNAUTHENTICATED, message: A valid bearer token is required } }
     InvalidInput:
-      description: Proposed field or identifier validation failure, or existing malformed JSON error.
+      description: Field or identifier validation failure, or existing malformed JSON error.
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'
@@ -819,8 +822,24 @@ components:
               value: { error: { code: INVALID_INPUT, message: Request fields are invalid } }
             invalidJson:
               value: { error: { code: INVALID_JSON, message: Request body must be valid JSON } }
+    ServiceUnavailable:
+      description: Transient conflict while creating or updating; retry after a moment.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheControlNoStore'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            conflict:
+              value: { error: { code: SERVICE_UNAVAILABLE, message: Please try again in a moment. } }
     UnprocessableAge:
-      description: Birth month is in the future or implies an age over 71 months.
+      description: >-
+        Birth month is in the future or implies an age over 71 months, or (POST
+        only) the caregiver already has 20 children.
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'
@@ -835,6 +854,12 @@ components:
                   code: UNPROCESSABLE_ENTITY
                   message: Child age must be between 0 and 71 months
                   details: [{ field: birthMonthYear, issue: Must not be in the future or older than 71 months }]
+            limitReached:
+              value:
+                error:
+                  code: UNPROCESSABLE_ENTITY
+                  message: You can add up to 20 children.
+                  details: [{ field: children, issue: Limit of 20 children reached }]
     ChildNotFound:
       description: Child missing from the caller's scope or not owned by the caller; identical response.
       headers:
@@ -882,6 +907,12 @@ components:
             rateLimited:
               value: { error: { code: RATE_LIMITED, message: Too many requests } }
   headers:
+    RetryAfter:
+      description: Seconds to wait before retrying (RFC 9110 section 10.2.3).
+      schema:
+        type: integer
+        minimum: 0
+        example: 1
     CacheControlNoStore:
       description: >-
         Always no-store on errors (RFC 9111 section 5.2.2.5). RFC 9110 section

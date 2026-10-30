@@ -1,6 +1,6 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity, catalog and AI recommendations core (`POST /api/v1/ai/recommendations`, deterministic fallback only; no AI provider is configured yet) are implemented in this branch. Rate limiting, AI provider integration and the child-profile routes are not implemented here.
+Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes and AI recommendations (`POST /api/v1/ai/recommendations`, deterministic fallback only; no AI provider is configured yet) are implemented, with server-side ownership checks. Rate limiting and abuse protection, AI provider integration, data export and deletion are not implemented yet.
 
 ---
 
@@ -30,7 +30,7 @@ LittleSteps uses a three-tier documentation structure. System architecture, prod
 2. Run `npm ci` to install dependencies from the lockfile.
 3. Run `npm run lint` to verify code style via ESLint.
 4. Run `npm run typecheck`, `npm run build`, and `npm test` for the fast unit-test baseline.
-5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication Emulator using the synthetic `demo-littlesteps` project.
+5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication and Firestore Emulators using the synthetic `demo-littlesteps` project.
 6. For interactive local development, run `npm run emulators -- --project demo-littlesteps`. Do not deploy to cloud environments during initial setup.
 
 The Auth Emulator integration suite tests malformed/invalid tokens, emulator-issued ID tokens, and validates that the API derives the identity UID strictly from the verified token rather than client parameters.
@@ -53,29 +53,29 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 
 All other routes, including errors, respond with `Cache-Control: no-store`.
 
-### Implemented AI Endpoint:
+### Implemented Child Profile Endpoints (authenticated):
+- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
+
+### Implemented AI Endpoint (authenticated):
 - `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; deterministic catalog fallback only, no AI provider configured yet.
 
-### Planned Feature & Integration Endpoints (Sprint 1):
-- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). Design-only contract, see Status below.
-- `POST /api/v1/ai/story-activity` (planned) — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
+### Planned Feature & Integration Endpoints:
+- `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
 ---
 
 ## Status & Pre-Feature Prerequisites
 
-Issue #7 defines a **proposed, unimplemented** child-profile contract in
+The child-profile routes (Issue #8) implement the contract in
 [OpenAPI](openapi/openapi.yaml): create/list at `/api/v1/children` and read/update
 at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs/child-profile-contract.md)
 for field mappings, synthetic examples, review gates (age rules, field mapping and HTTP details decided; deletion and retention open) and privacy
-decisions. These routes are not available in the emulator yet; implementation
-belongs to Issue #8 after contract review.
+decisions. Run `npm run test:emulator` to exercise them against the Auth and Firestore emulators.
 
-The following milestones must be completed before implementing feature endpoints:
-- Define the Firestore data schema and child ownership model.
-- Implement server-side ownership authorization for every child-scoped operation.
-- Implement request schema validation and negative error tests.
-- Expand OpenAPI contract and validate implementations against it.
+Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract.
+
+Still to do:
+- Child data export and deletion (D5), and retention (D6).
 - Implement rate limiting, abuse protections, and budget alerts before enabling AI provider calls.
 - Review Firebase billing plans, privacy obligations, and provider terms before deployment.
 

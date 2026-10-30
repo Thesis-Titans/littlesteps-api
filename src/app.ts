@@ -3,6 +3,7 @@ import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { aiRouter } from "./ai/ai-router.js";
 import { catalogRouter } from "./catalog/catalog-router.js";
+import { childrenRouter } from "./children/children-router.js";
 import { requireFirebaseUser } from "./middleware/require-firebase-user.js";
 
 const app = express();
@@ -40,6 +41,7 @@ app.get("/health", (_request, response) => {
 });
 
 app.use("/api/v1/catalog", catalogRouter);
+app.use("/api/v1/children", requireFirebaseUser, childrenRouter);
 
 app.use("/api/v1/ai", requireFirebaseUser, aiRouter);
 

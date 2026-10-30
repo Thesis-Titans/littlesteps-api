@@ -1,47 +1,47 @@
 # Child profile and caregiver ownership contract
 
-Status: **Proposed contract for review; not implemented.** Issue #7 defines the
+Status: **Implemented by issue #8; decisions D5 and D6 remain open.** Issue #7 defines the
 interface. Issue #8 implements it after relevant decision gates are resolved.
-Preparing this draft does not replace Mark's and the feature partner's review.
+This contract does not replace Mark's and the feature partner's review.
 
 ## Sources and conventions
 
 - [Issue #7](https://github.com/Thesis-Titans/littlesteps-api/issues/7), including Mark's October 28, 2026 comment: `nickname`, `birthMonthYear`, derived `ageBand`, verified-UID ownership, identical 404 responses for missing/cross-owner IDs.
 - [Parent feature #46](https://github.com/Thesis-Titans/littlesteps-docs/issues/46).
-- [Canonical data model](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/data-model.md), sections 1, 2.2 and 3: caregiver-scoped storage, UUIDv4, fields and proposed lifecycle requirements.
+- [Canonical data model](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/data-model.md), sections 1, 2.2 and 3: caregiver-scoped storage, UUIDv4, fields and lifecycle requirements (deletion is planned, not implemented).
 - [Architecture ADR-003 through ADR-005](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/architecture-decisions.md): Firebase authentication, application-level ownership, Firestore and OpenAPI.
 - [UI specification](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/ui-ux-design-specification.md), sections 2 and 4: month/year input, direct-band alternative, no surname/photo.
 - [Security/privacy requirements](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/security-privacy-ai.md): NFR-SEC-01/02/04 and NFR-PRIV-01/03.
 
 The authoritative interface is [OpenAPI](../openapi/openapi.yaml). Only
-`GET /health` and `GET /api/v1/me` currently exist. Child paths, success
-projections and new validation behavior below are proposals, not working routes.
+`GET /health`, `GET /api/v1/me`, the catalog routes and the child create, list, read and update routes currently exist.
+Child deletion and rate limiting are not implemented.
 
 ## Minimum model and API/storage mapping
 
 | API field | Internal field/type | Required in record | Constraints and rationale |
 |---|---|---|---|
 | `id` | `id`: string; document ID | Yes | Server-generated lowercase UUIDv4; stable lookup key, never proof of ownership. |
-| `nickname` | `name`: string | Yes | 1-50 characters, not whitespace-only; supports child selection without requiring a full name. |
+| `nickname` | `name`: string | Yes | 1-50 characters (counted as Unicode code points after normalization), not whitespace-only, no Unicode control or format characters; supports child selection without requiring a full name. |
 | `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM` (ISO 8601 reduced-precision calendar month); coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
 | `ageBand` | `ageBand`: enum string | Yes | Navigation category. Derived on read from `birthMonth` when present (not trusted from storage); otherwise the stored caregiver-selected band. |
-| Not exposed in draft | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
+| Not exposed | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
 | `createdAt` | Firestore timestamp | Yes | Server creation time; API serializes as UTC RFC 3339. Immutable. |
 | `updatedAt` | Firestore timestamp | Yes | Server last-update time; API serializes as UTC RFC 3339. Never client-assigned. |
 
-The proposed API/storage mapping reconciles the issue comment with the canonical
+The API/storage mapping reconciles the issue comment with the canonical
 storage names without silently renaming stored fields. Mapping and omission of
 the internal UID from responses need contract review. No duplicate personal-data
-fields are proposed in storage.
+fields are added in storage.
 
-No field accepts `null` in this draft. Optional birth information is omitted.
+No field accepts `null`. Optional birth information is omitted.
 There are no implicit nickname, birth-month or age-band defaults. The server
 assigns IDs, ownership and timestamps. Requests reject extra fields, including
 `uid`, `caregiverId`, timestamps, surnames, photos and exact birth dates.
 Schemas cannot determine whether free text names a real child: use only synthetic
 data. Child names and birth information must not enter logs or AI prompts.
 
-Create proposes a nickname plus exactly one age source: `birthMonthYear` or
+Create takes a nickname plus exactly one age source: `birthMonthYear` or
 `ageBand`. Both/neither fail validation. This avoids contradictory client input
 when the server derives a band. Details remain subject to review.
 
@@ -114,18 +114,19 @@ own path. UUID uniqueness is not authorization. Admin SDK
 bypasses Firestore rules, so application checks are mandatory; existing deny-all
 client rules stay intact. No sharing, delegation or ownership-transfer API exists.
 
-## Proposed operations
+## Operations (implemented; DELETE planned)
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
-| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range |
+| `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range or 20-child limit reached; 503 transient conflict while creating, retry after a moment |
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
-| `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 400 UUID; 401 token; 404 missing/not owned |
-| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON/UUID; 401 token; 404 missing/not owned; 422 age out of range |
+| `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
+| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range; 503 transient conflict while updating, retry after a moment |
 
-Paths follow the existing `/api/v1` prefix but remain proposed. A profile object
-or bare array avoids inventing a common success envelope; list ordering and
-pagination are unspecified. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
+Paths follow the existing `/api/v1` prefix. The child routes are implemented; only D5 (deletion execution) and D6 (retention) remain open. A profile object
+or bare array avoids inventing a common success envelope; the list is not paginated. A caregiver can have at most 20 children (decision 2026-10-30). Creating a 21st returns `422 UNPROCESSABLE_ENTITY` with message `You can add up to 20 children.` and details `[{ "field": "children", "issue": "Limit of 20 children reached" }]`; the count and create are one transaction, so concurrent requests cannot exceed 20. The list returns children ordered by creation time (document ID breaks ties); its limit of 50 is now only a safety bound, since a caregiver can never have more than 20.
+Under heavy contention the create or update transaction can be aborted; the API then returns `503 SERVICE_UNAVAILABLE` (`Please try again in a moment.`) with `Retry-After: 1` and `Cache-Control: no-store`, and the client may retry. Nothing is written in that case.
+Validation errors (400/422) are returned before the ownership lookup and do not depend on the target id, so they reveal nothing about whether a child exists. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
 The envelope is a deliberate deviation from RFC 9457 problem details (RFC 9457
 section 4 allows an application to carry errors in a format it already defines);
 the cheapest later change is `application/problem+json`. Error responses send
@@ -134,7 +135,7 @@ the cheapest later change is `application/problem+json`. Error responses send
 Any endpoint may return `429 RATE_LIMITED` with `Retry-After: <delay-seconds>`
 (RFC 6585 section 4, RFC 9110 section 10.2.3); clients should back off for that
 many seconds. Limits are per-IP and per-UID. Rate limiting is NOT implemented yet.
-Proposed `INVALID_INPUT` uses 400, matching the existing malformed-input status.
+`INVALID_INPUT` uses 400, matching the existing malformed-input status.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses
 404. Validation must not disclose whether another caregiver owns a valid UUID.
 
@@ -151,7 +152,7 @@ be replaced by an emulator-issued token for synthetic caregiver A. JSON requests
 also send `Content-Type: application/json`.
 
 1. **Create:** `POST /api/v1/children` with
-   `{"nickname":"Sample Child","birthMonthYear":"2025-08"}` proposes 201 with
+   `{"nickname":"Sample Child","birthMonthYear":"2025-08"}` returns 201 with
    the profile below (reference month October 2026).
 
 ```json
@@ -168,13 +169,13 @@ also send `Content-Type: application/json`.
    Birth-free input is `{"nickname":"Sample Child","ageBand":"12-23m"}`;
    its response omits `birthMonthYear`.
 
-2. **List:** `GET /api/v1/children` proposes 200 with `[<profile above>]`, or
+2. **List:** `GET /api/v1/children` returns 200 with `[<profile above>]`, or
    `[]` for no children. The actual valid JSON populated array is in OpenAPI's
    `listChildren` example; the angle-bracket notation here is illustrative.
 3. **Read:** `GET /api/v1/children/6f1c344e-84a8-4e24-9d72-74739a8c1362`
-   proposes 200 with the profile above, assuming it belongs to A.
+   returns 200 with the profile above, assuming it belongs to A.
 4. **Update:** PATCH that same child path with `{"nickname":"Sample Sprout"}`.
-   Proposed 200 retains ID, birth month, age band and `createdAt`, changes
+   200 retains ID, birth month, age band and `createdAt`, changes
    `nickname` to `Sample Sprout`, and sets server `updatedAt` to
    `2026-10-29T08:05:00Z`, as in OpenAPI's update example.
 5. **Unauthenticated:** GET the list without Authorization returns 401:
@@ -188,14 +189,14 @@ also send `Content-Type: application/json`.
    sends `{"nickname":"Sample Sprout"}`: identical 404, no mutation. Forged UID
    headers/query parameters cannot change identity. A `caregiverId` body field
    fails validation with 400; it cannot assign an owner. There is no caregiver-UID
-   path parameter in this draft.
+   path parameter.
 9. **Validation:** POST with `{"nickname":"","birthMonthYear":"2025-13"}`
-   proposes 400:
+   returns 400:
    `{"error":{"code":"INVALID_INPUT","message":"Request fields are invalid"}}`.
    Malformed JSON uses existing 400 `INVALID_JSON` / `Request body must be valid JSON`.
-   Malformed UUID syntax uses proposed 400 `INVALID_INPUT`, not an ownership lookup.
+   A malformed child ID in the path returns the same 404 as a missing child (no 400), so it reveals nothing.
 10. **Age out of range:** POST `{"nickname":"Sample Child","birthMonthYear":"2027-01"}`
-    (future) or `"2019-01"` (over 71 months) proposes 422:
+    (future) or `"2019-01"` (over 71 months) returns 422:
     `{"error":{"code":"UNPROCESSABLE_ENTITY","message":"Child age must be between 0 and 71 months","details":[{"field":"birthMonthYear","issue":"Must not be in the future or older than 71 months"}]}}`.
     PATCH `{"birthMonthYear":"2025-07"}` corrects age with the same checks.
 11. **Missing child:** Assume `8c2bce8d-9066-428d-aafa-c26761845c6e` is absent.
@@ -206,7 +207,7 @@ also send `Content-Type: application/json`.
 
 The canonical data model describes hard cascade deletion of a child's milestone
 observations, scheduled activities, journal entries and weekly summaries; account
-deletion covers associated children and the caregiver document. These are proposed
+deletion covers associated children and the caregiver document. These are planned
 lifecycle requirements, not implemented guarantees. No deletion endpoint, SLA,
 database migration, owner transfer or multi-owner support is added.
 
@@ -228,7 +229,7 @@ login alone must not be claimed as complete account data deletion.
 
 Validate OpenAPI syntax, references and examples, and run canonical docs checks.
 The API currently has no dedicated OpenAPI validation script. Temporary tooling
-must not change project dependencies merely to check the draft. Schema validation
+must not change project dependencies merely to check the contract. Schema validation
 cannot establish working endpoints, authentication, ownership, age calculations,
 cascades or production readiness. Issue #8 requires positive/negative emulator
 tests for each operation, token failures, invalid input, cross-owner reads/writes,
