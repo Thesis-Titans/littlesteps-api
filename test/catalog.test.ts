@@ -189,7 +189,7 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.body.books).toHaveLength(2);
       expect(res.body.books[0].id).toBe("OL52987W");
       // Fix #2: license must use the Open Library licence text
-      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights");
+      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights");
     });
 
     it("serves a cache HIT on subsequent identical request without calling fetch again", async () => {
@@ -214,7 +214,7 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(Array.isArray(res.body.books)).toBe(true);
       // Fallback serves local curated books with the Open Library licence text
       expect(res.body.provenance.source).toBe("local-fallback");
-      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights");
+      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights");
     });
 
     it("falls back to local fixture when Open Library returns a 500 error", async () => {

@@ -18,7 +18,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (per api-reference.md §5.1)
 const CACHE_MAX_ENTRIES = 100;
 const FALLBACK_CACHE_TTL_MS = 60 * 1000; // short TTL so a transient outage recovers quickly
 const OPEN_LIBRARY_LICENSE =
-  "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights";
+  "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights";
 const booksCache = new Map<string, CacheEntry>();
 
 // Fix #1: Synthetic fixture files are engineering-only content and must NEVER be

@@ -638,7 +638,7 @@ components:
               example: Open Library (Internet Archive)
             license:
               type: string
-              example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights"
+              example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights"
   examples:
     Child:
       summary: Synthetic profile; age shown as of October 2026.
