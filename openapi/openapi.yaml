@@ -5,8 +5,9 @@ info:
   description: >-
     Health, identity and learning-catalog endpoints are implemented. Child-profile
     operations are a reviewable design contract for Issue 7, not implemented routes.
-    Remaining decisions (D5, D6) in docs/child-profile-contract.md must be
-    resolved before Issue 8.
+    Open decisions D5 (deletion execution) and D6 (production retention) in
+    docs/child-profile-contract.md block only the deletion API and production
+    deployment, not Issue 8.
 servers:
   - url: http://127.0.0.1:5001/{projectId}/asia-southeast1/api
     description: Firebase Functions emulator; replace projectId with the local Firebase project ID.
