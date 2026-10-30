@@ -1,6 +1,6 @@
 # Child profile and caregiver ownership contract
 
-Status: **Proposed contract for review; not implemented.** Issue #7 defines the
+Status: **Implemented by issue #8; decisions D5 and D6 remain open.** Issue #7 defines the
 interface. Issue #8 implements it after relevant decision gates are resolved.
 Preparing this draft does not replace Mark's and the feature partner's review.
 
@@ -120,8 +120,8 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 |---|---|---|---|
 | `POST /api/v1/children` | `createChild` | 201 profile | 400 input/JSON; 401 token; 422 age out of range |
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
-| `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 400 UUID; 401 token; 404 missing/not owned |
-| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON/UUID; 401 token; 404 missing/not owned; 422 age out of range |
+| `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
+| `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range |
 
 Paths follow the existing `/api/v1` prefix but remain proposed. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
@@ -193,7 +193,7 @@ also send `Content-Type: application/json`.
    proposes 400:
    `{"error":{"code":"INVALID_INPUT","message":"Request fields are invalid"}}`.
    Malformed JSON uses existing 400 `INVALID_JSON` / `Request body must be valid JSON`.
-   Malformed UUID syntax uses proposed 400 `INVALID_INPUT`, not an ownership lookup.
+   A malformed child ID in the path returns the same 404 as a missing child (no 400), so it reveals nothing.
 10. **Age out of range:** POST `{"nickname":"Sample Child","birthMonthYear":"2027-01"}`
     (future) or `"2019-01"` (over 71 months) proposes 422:
     `{"error":{"code":"UNPROCESSABLE_ENTITY","message":"Child age must be between 0 and 71 months","details":[{"field":"birthMonthYear","issue":"Must not be in the future or older than 71 months"}]}}`.

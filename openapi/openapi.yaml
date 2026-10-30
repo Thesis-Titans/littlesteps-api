@@ -220,14 +220,14 @@ paths:
   /api/v1/children:
     post:
       operationId: createChild
-      summary: Create an owned child profile (design only)
+      summary: Create an owned child profile
       description: >-
-        Proposed operation, not implemented. The server assigns a UUIDv4,
+        The server assigns a UUIDv4,
         caregiverId from the verified token UID, and UTC timestamps. No
         client-supplied identity establishes ownership. When birthMonthYear is
         given, the server derives the band from its UTC calendar month. A future
         month, or one more than 71 months ago, returns 422 UNPROCESSABLE_ENTITY. Months are counted in UTC as (current year x 12 + current month) - (birth year x 12 + birth month); 0 to 71 inclusive is accepted.
-      x-implementation-status: not-implemented
+      x-implementation-status: implemented
       x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
@@ -260,13 +260,13 @@ paths:
           $ref: '#/components/responses/UnprocessableAge'
     get:
       operationId: listChildren
-      summary: List owned child profiles (design only)
+      summary: List owned child profiles
       description: >-
-        Proposed unpaginated JSON array for the first slice, not implemented.
+        Unpaginated JSON array ordered by createdAt, then id.
         Query only the verified UID's caregiver path; never list globally and
         filter in the client. An account without children receives an empty array.
-        Pagination and ordering are not promised by this draft.
-      x-implementation-status: not-implemented
+        Pagination is not provided.
+      x-implementation-status: implemented
       x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
@@ -302,29 +302,27 @@ paths:
           $ref: '#/components/schemas/ChildId'
     get:
       operationId: getChild
-      summary: Read an owned child profile (design only)
+      summary: Read an owned child profile
       description: >-
-        Not implemented. Resolve the ID within the verified UID's child path,
+        Resolve the ID within the verified UID's child path,
         verify caregiverId matches that UID, and expose no profile until authorized.
-        Cross-owner substitution and nonexistent IDs have identical 404 responses.
-      x-implementation-status: not-implemented
+        Cross-owner substitution, nonexistent IDs and malformed IDs have identical 404 responses.
+      x-implementation-status: implemented
       x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []
       responses:
         '200':
           $ref: '#/components/responses/OwnedChild'
-        '400':
-          $ref: '#/components/responses/InvalidInput'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/ChildNotFound'
     patch:
       operationId: updateChild
-      summary: Update an owned child profile (design only)
+      summary: Update an owned child profile
       description: >-
-        Proposed partial update, not implemented. Send nickname and/or exactly
+        Partial update. Send nickname and/or exactly
         one age source (birthMonthYear or ageBand), validated as on create, so
         caregivers can correct age (right to rectification). Supplying an age
         source replaces the previous one: birthMonthYear stores the month and the
@@ -334,7 +332,7 @@ paths:
 
         The body is a plain application/json partial update, not JSON Merge
         Patch (RFC 7396 gives null the meaning remove). Nulls are rejected with 400.
-      x-implementation-status: not-implemented
+      x-implementation-status: implemented
       x-contract-status: proposed-pending-review
       security:
         - bearerAuth: []

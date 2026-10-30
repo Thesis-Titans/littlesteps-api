@@ -1,8 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default-deny baseline. Add narrowly scoped rules after the data model
-    // and client access patterns have been reviewed.
+    // Default-deny baseline. Client access is intentionally denied: the API uses
+    // the Admin SDK (which bypasses rules) and enforces child ownership itself.
     match /{document=**} {
       allow read, write: if false;
     }

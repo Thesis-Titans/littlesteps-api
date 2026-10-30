@@ -11,9 +11,10 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run --exclude test/auth-emulator.test.ts",
+    "test": "vitest run --exclude test/auth-emulator.test.ts --exclude test/children-emulator.test.ts",
     "test:auth-emulator": "vitest run test/auth-emulator.test.ts",
-    "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth \"npm run test:auth-emulator\"",
+    "test:children-emulator": "vitest run test/children-emulator.test.ts",
+    "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth,firestore \"vitest run test/auth-emulator.test.ts test/children-emulator.test.ts\"",
     "test:watch": "vitest",
     "emulators": "firebase emulators:start --only functions,auth,firestore"
   },
