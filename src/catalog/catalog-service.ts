@@ -49,7 +49,7 @@ function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
 }
 
 // Production starts empty: no reviewed content exists yet, and synthetic fixtures must never be served.
-// Tests inject fixtures via setCatalogActivities().
+// Test-only: tests inject fixtures via setCatalogActivities(); production never calls it.
 let activitiesStore: CatalogActivity[] = [];
 
 export function setCatalogActivities(items: CatalogActivity[]): void {

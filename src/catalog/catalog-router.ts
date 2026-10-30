@@ -36,7 +36,11 @@ catalogRouter.get("/activities/:id", (request: Request, response: Response) => {
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   if (!CatalogIdParamSchema.safeParse(id).success) {
     response.status(400).json({
-      error: { code: "INVALID_INPUT", message: "Invalid catalog activity id" }
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid catalog activity id",
+        details: [{ field: "id", issue: "Must be 1-64 lowercase letters, digits or hyphens" }]
+      }
     });
     return;
   }
