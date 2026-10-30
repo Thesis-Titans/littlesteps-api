@@ -250,6 +250,8 @@ paths:
                 $ref: '#/components/schemas/RecommendationResponse'
         '400':
           $ref: '#/components/responses/InvalidInput'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '429':
@@ -293,6 +295,8 @@ paths:
                   $ref: '#/components/examples/Child'
         '400':
           $ref: '#/components/responses/InvalidInput'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -407,6 +411,8 @@ paths:
                     updatedAt: '2026-10-29T08:05:00Z'
         '400':
           $ref: '#/components/responses/InvalidInput'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -872,6 +878,18 @@ components:
           examples:
             missingOrNotOwned:
               value: { error: { code: RESOURCE_NOT_FOUND, message: Resource not found } }
+    PayloadTooLarge:
+      description: Request body is larger than the 100 KB limit (RFC 9110 section 15.5.14). Any endpoint that reads a JSON body may return this.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheControlNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            tooLarge:
+              value: { error: { code: PAYLOAD_TOO_LARGE, message: The request body is too large. } }
     InternalError:
       description: Unexpected server error. No internal detail disclosed.
       headers:
