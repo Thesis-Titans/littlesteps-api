@@ -30,3 +30,21 @@ describe("LittleSteps API scaffold", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 });
+
+describe("request body limits", () => {
+  it("returns 413 with the standard envelope for a body over 100 KB", async () => {
+    const response = await request(app)
+      .post("/api/v1/children")
+      .set("Authorization", "Bearer uid-a")
+      .send({ nickname: "x".repeat(101 * 1024) });
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({ error: { code: "PAYLOAD_TOO_LARGE", message: "The request body is too large." } });
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("still returns INVALID_JSON 400 for malformed JSON", async () => {
+    const response = await request(app).post("/api/v1/children").set("Content-Type", "application/json").send("{bad");
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_JSON");
+  });
+});
