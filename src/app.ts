@@ -61,6 +61,10 @@ app.use((_request, response) => {
 });
 
 const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
+  if ((error as { type?: unknown } | null)?.type === "entity.too.large") {
+    response.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "The request body is too large." } });
+    return;
+  }
   if (error instanceof SyntaxError) {
     response.status(400).json({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } });
     return;

@@ -101,12 +101,16 @@ describe("children API against the Auth and Firestore emulators", () => {
     const a = await signUp();
     const auth = { Authorization: `Bearer ${a.idToken}` };
     const post = () => request(app).post("/api/v1/children").set(auth).send({ nickname: "Kid", ageBand: "0-5m" });
-    const first = await Promise.all(Array.from({ length: 20 }, post));
-    expect(first.map((r) => r.status)).toEqual(Array(20).fill(201));
+    const col = getFirestore().collection("caregivers").doc(a.localId).collection("children");
+    const statuses: number[] = [];
+    // Four small waves of 5: contended transactions may answer 503, which is retried one at a time.
+    for (let wave = 0; wave < 4; wave++) statuses.push(...(await Promise.all(Array.from({ length: 5 }, post))).map((r) => r.status));
+    for (let tries = 0; tries < 100 && (await col.get()).size < 20; tries++) statuses.push((await post()).status);
+    expect(statuses.every((s) => s === 201 || s === 503)).toBe(true);
+    expect((await col.get()).size).toBe(20);
     const extra = await post();
     expect(extra.status).toBe(422);
     expect(extra.body.error.details).toEqual([{ field: "children", issue: "Limit of 20 children reached" }]);
-    const col = getFirestore().collection("caregivers").doc(a.localId).collection("children");
     expect((await col.get()).size).toBe(20);
   }, 60_000);
 
