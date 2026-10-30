@@ -26,8 +26,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      - name: Test Firebase ID-token verification with Auth Emulator
+      - name: Test Firebase ID-token verification with Auth and Firestore Emulators
         run: npm run test:emulator
         env:
           FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
           GCLOUD_PROJECT: demo-littlesteps

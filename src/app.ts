@@ -2,6 +2,7 @@ import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { catalogRouter } from "./catalog/catalog-router.js";
+import { childrenRouter } from "./children/children-router.js";
 import { requireFirebaseUser } from "./middleware/require-firebase-user.js";
 
 const app = express();
@@ -39,6 +40,7 @@ app.get("/health", (_request, response) => {
 });
 
 app.use("/api/v1/catalog", catalogRouter);
+app.use("/api/v1/children", requireFirebaseUser, childrenRouter);
 
 app.get("/api/v1/me", requireFirebaseUser, (request, response) => {
   response.setHeader("Cache-Control", "no-store");
