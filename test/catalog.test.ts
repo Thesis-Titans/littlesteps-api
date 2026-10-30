@@ -130,6 +130,7 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("INVALID_INPUT");
       expect(res.body.error).toHaveProperty("details");
+      expect(res.body.error.details[0]).toEqual({ field: expect.any(String), issue: expect.any(String) });
     });
 
     it("returns 400 INVALID_INPUT on invalid limit", async () => {

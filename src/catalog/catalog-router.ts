@@ -20,7 +20,7 @@ catalogRouter.get("/activities", (request: Request, response: Response) => {
       error: {
         code: "INVALID_INPUT",
         message: "Invalid catalog query parameters",
-        details: queryResult.error.issues
+        details: queryResult.error.issues.map((i) => ({ field: i.path.join("."), issue: i.message }))
       }
     });
     return;
@@ -65,7 +65,7 @@ catalogRouter.get("/books", async (request: Request, response: Response) => {
       error: {
         code: "INVALID_INPUT",
         message: "Invalid book catalog query parameters",
-        details: queryResult.error.issues
+        details: queryResult.error.issues.map((i) => ({ field: i.path.join("."), issue: i.message }))
       }
     });
     return;
