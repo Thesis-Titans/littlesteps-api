@@ -592,7 +592,7 @@ components:
       properties:
         id:
           type: string
-          example: OL7835968W
+          example: OL52987W
         title:
           type: string
           example: The Very Hungry Caterpillar
@@ -638,7 +638,7 @@ components:
               example: Open Library (Internet Archive)
             license:
               type: string
-              example: "Metadata: Open Library, CC0"
+              example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights"
   examples:
     Child:
       summary: Synthetic profile; age shown as of October 2026.
