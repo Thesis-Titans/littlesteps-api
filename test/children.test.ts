@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AgeRangeError, assertBirthMonthInRange, bandForMonths, deriveAgeBand, monthsBetween } from "../src/children/age.js";
 import { applyUpdate, toPublic, toStored } from "../src/children/mapping.js";
+import { createMemoryChildrenStore, LIST_LIMIT, MAX_CHILDREN } from "../src/children/children-store.js";
 import { CreateChildSchema, UpdateChildSchema, toErrorDetails } from "../src/children/schemas.js";
 
 const NOW = new Date("2026-10-15T12:00:00Z");
@@ -123,5 +124,32 @@ describe("mapping", () => {
     const u = applyUpdate(stored, UpdateChildSchema.parse({ ageBand: "0-5m" }), later);
     expect(u.birthMonth).toBeUndefined();
     expect(u).toMatchObject({ ageBand: "0-5m", caregiverId: "uid-a", createdAt: stored.createdAt, updatedAt: later.toISOString() });
+  });
+});
+
+describe("memory store list", () => {
+  it("returns the first 50 children by createdAt, in order", async () => {
+    const store = createMemoryChildrenStore();
+    const mk = (n: number) => ({
+      id: `id-${String(55 - n).padStart(2, "0")}`, // ids sort opposite to creation order
+      caregiverId: "u1", name: `C${n}`, ageBand: "0-5m" as const,
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, n)).toISOString(), updatedAt: "x"
+    });
+    for (let n = 54; n >= 0; n--) store.data.set(`u1/${mk(n).id}`, mk(n)); // seed past the cap, newest first
+    const list = await store.list("u1");
+    expect(list).toHaveLength(LIST_LIMIT);
+    expect(list.map((c) => c.name)).toEqual(Array.from({ length: 50 }, (_, n) => `C${n}`));
+  });
+});
+
+describe("memory store cap", () => {
+  const mk = (n: number) => ({ id: `id-${n}`, caregiverId: "u1", name: `C${n}`, ageBand: "0-5m" as const, createdAt: "x", updatedAt: "x" });
+  it("accepts 20 children and rejects the 21st", async () => {
+    const store = createMemoryChildrenStore();
+    expect(MAX_CHILDREN).toBe(20);
+    for (let n = 0; n < 20; n++) expect(await store.create("u1", mk(n))).toBe(true);
+    expect(await store.create("u1", mk(20))).toBe(false);
+    expect(await store.list("u1")).toHaveLength(20);
+    expect(await store.create("u2", { ...mk(0), caregiverId: "u2" })).toBe(true);
   });
 });
