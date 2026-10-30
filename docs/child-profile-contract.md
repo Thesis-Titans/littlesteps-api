@@ -2,7 +2,7 @@
 
 Status: **Implemented by issue #8; decisions D5 and D6 remain open.** Issue #7 defines the
 interface. Issue #8 implements it after relevant decision gates are resolved.
-Preparing this draft does not replace Mark's and the feature partner's review.
+This contract does not replace Mark's and the feature partner's review.
 
 ## Sources and conventions
 
@@ -25,7 +25,7 @@ projections and new validation behavior below are proposals, not working routes.
 | `nickname` | `name`: string | Yes | 1-50 characters, not whitespace-only; supports child selection without requiring a full name. |
 | `birthMonthYear` | `birthMonth`: string | No | `YYYY-MM` (ISO 8601 reduced-precision calendar month); coarse age calculation without a day of birth. Not in the future and at most 71 months old at create/edit (422 otherwise). |
 | `ageBand` | `ageBand`: enum string | Yes | Navigation category. Derived on read from `birthMonth` when present (not trusted from storage); otherwise the stored caregiver-selected band. |
-| Not exposed in draft | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
+| Not exposed | `caregiverId`: string | Yes | Server-assigned verified token UID; must equal parent caregiver path UID. Internal authorization field. |
 | `createdAt` | Firestore timestamp | Yes | Server creation time; API serializes as UTC RFC 3339. Immutable. |
 | `updatedAt` | Firestore timestamp | Yes | Server last-update time; API serializes as UTC RFC 3339. Never client-assigned. |
 
@@ -34,7 +34,7 @@ storage names without silently renaming stored fields. Mapping and omission of
 the internal UID from responses need contract review. No duplicate personal-data
 fields are proposed in storage.
 
-No field accepts `null` in this draft. Optional birth information is omitted.
+No field accepts `null`. Optional birth information is omitted.
 There are no implicit nickname, birth-month or age-band defaults. The server
 assigns IDs, ownership and timestamps. Requests reject extra fields, including
 `uid`, `caregiverId`, timestamps, surnames, photos and exact birth dates.
@@ -114,7 +114,7 @@ own path. UUID uniqueness is not authorization. Admin SDK
 bypasses Firestore rules, so application checks are mandatory; existing deny-all
 client rules stay intact. No sharing, delegation or ownership-transfer API exists.
 
-## Proposed operations
+## Operations (implemented; DELETE planned)
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
@@ -125,7 +125,7 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 
 Paths follow the existing `/api/v1` prefix. The child routes are implemented; only D5 (deletion execution) and D6 (retention) remain open. A profile object
 or bare array avoids inventing a common success envelope; list ordering and
-pagination are unspecified. A caregiver's list returns at most 50 children; no per-caregiver cap on creation has been decided.
+pagination are unspecified. A caregiver's list returns at most 50 children, ordered by creation time (document ID breaks ties). When a caregiver has more than 50 children only the first 50 by creation time are listed; no per-caregiver cap on creation has been decided.
 Validation errors (400/422) are returned before the ownership lookup and do not depend on the target id, so they reveal nothing about whether a child exists. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
 The envelope is a deliberate deviation from RFC 9457 problem details (RFC 9457
 section 4 allows an application to carry errors in a format it already defines);
@@ -135,7 +135,7 @@ the cheapest later change is `application/problem+json`. Error responses send
 Any endpoint may return `429 RATE_LIMITED` with `Retry-After: <delay-seconds>`
 (RFC 6585 section 4, RFC 9110 section 10.2.3); clients should back off for that
 many seconds. Limits are per-IP and per-UID. Rate limiting is NOT implemented yet.
-Proposed `INVALID_INPUT` uses 400, matching the existing malformed-input status.
+`INVALID_INPUT` uses 400, matching the existing malformed-input status.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses
 404. Validation must not disclose whether another caregiver owns a valid UUID.
 
@@ -175,7 +175,7 @@ also send `Content-Type: application/json`.
 3. **Read:** `GET /api/v1/children/6f1c344e-84a8-4e24-9d72-74739a8c1362`
    proposes 200 with the profile above, assuming it belongs to A.
 4. **Update:** PATCH that same child path with `{"nickname":"Sample Sprout"}`.
-   Proposed 200 retains ID, birth month, age band and `createdAt`, changes
+   200 retains ID, birth month, age band and `createdAt`, changes
    `nickname` to `Sample Sprout`, and sets server `updatedAt` to
    `2026-10-29T08:05:00Z`, as in OpenAPI's update example.
 5. **Unauthenticated:** GET the list without Authorization returns 401:

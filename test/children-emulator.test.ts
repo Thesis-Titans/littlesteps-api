@@ -81,4 +81,18 @@ describe("children API against the Auth and Firestore emulators", () => {
     const got = (await request(app).get(`/api/v1/children/${id}`).set(auth)).body;
     expect(got).toMatchObject({ nickname: "After", ageBand: "24-35m" });
   });
+
+  it("lists the first 50 children by createdAt when there are more", async () => {
+    const a = await signUp();
+    const col = getFirestore().collection("caregivers").doc(a.localId).collection("children");
+    const batch = getFirestore().batch();
+    for (let n = 54; n >= 0; n--) {
+      const id = `00000000-0000-4000-8000-${String(100000 - n).padStart(12, "0")}`;
+      const t = new Date(Date.UTC(2026, 0, 1, 0, 0, n)).toISOString();
+      batch.set(col.doc(id), { id, caregiverId: a.localId, name: `C${n}`, ageBand: "0-5m", createdAt: t, updatedAt: t });
+    }
+    await batch.commit();
+    const list = await request(app).get("/api/v1/children").set({ Authorization: `Bearer ${a.idToken}` });
+    expect(list.body.map((c: { nickname: string }) => c.nickname)).toEqual(Array.from({ length: 50 }, (_, n) => `C${n}`));
+  });
 });

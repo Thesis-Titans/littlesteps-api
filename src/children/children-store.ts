@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldPath, getFirestore } from "firebase-admin/firestore";
 import type { StoredChild } from "./types.js";
 
 // Every method takes the verified uid; the storage path is derived from it only.
@@ -23,7 +23,7 @@ export function createFirestoreChildrenStore(): ChildrenStore {
   const col = (uid: string) => getFirestore().collection("caregivers").doc(uid).collection("children");
   return {
     async list(uid) {
-      const snap = await col(uid).limit(LIST_LIMIT).get();
+      const snap = await col(uid).orderBy("createdAt").orderBy(FieldPath.documentId()).limit(LIST_LIMIT).get();
       return snap.docs.map((d) => ownedBy(uid, d.data() as StoredChild)).filter((c): c is StoredChild => c !== null);
     },
     async get(uid, childId) {
@@ -52,7 +52,12 @@ export function createMemoryChildrenStore(): ChildrenStore & { data: Map<string,
   return {
     data,
     async list(uid) {
-      return [...data.entries()].filter(([k]) => k.startsWith(`${uid}/`)).map(([, v]) => ownedBy(uid, v)).filter((c): c is StoredChild => c !== null).slice(0, LIST_LIMIT);
+      return [...data.entries()]
+        .filter(([k]) => k.startsWith(`${uid}/`))
+        .map(([, v]) => ownedBy(uid, v))
+        .filter((c): c is StoredChild => c !== null)
+        .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, LIST_LIMIT);
     },
     async get(uid, childId) {
       return ownedBy(uid, data.get(`${uid}/${childId}`));
