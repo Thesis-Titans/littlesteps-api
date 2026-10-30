@@ -388,8 +388,9 @@ components:
       maxLength: 50
       pattern: '\S'
       description: >-
-        Nickname only. Draft validation rejects whitespace-only values; no
-        trimming default is promised. Exact normalization needs review.
+        Nickname only. The server trims leading and trailing whitespace and
+        collapses internal whitespace runs to one space (decision D4), then
+        rejects an empty result; whitespace-only values are invalid.
     BirthMonthYear:
       type: string
       pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
@@ -729,6 +730,7 @@ components:
             missingOrNotOwned:
               value: { error: { code: RESOURCE_NOT_FOUND, message: Resource not found } }
     RateLimited:
+      x-implementation-status: not-implemented
       description: >-
         Too many requests from this IP address or caller UID. Any endpoint may
         return this. Wait Retry-After seconds before retrying. Proposed; rate

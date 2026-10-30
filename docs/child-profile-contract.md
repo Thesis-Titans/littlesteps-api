@@ -66,7 +66,8 @@ section 11.2). The 400/422 split is a project convention: 400 for malformed JSON
 or shape (RFC 9110 section 15.5.1), 422 for a well-formed value that violates a
 business rule.
 
-Nickname normalization (including trimming) is pending. The draft imposes raw
+Nickname normalization (decision D4): trim leading and trailing whitespace and
+collapse internal whitespace runs to one space. The contract also imposes raw
 length bounds and rejects whitespace-only text. PATCH accepts `nickname`
 and/or exactly one of `birthMonthYear` or `ageBand` (both fail with 400), with the
 same validation as create, so caregivers can correct age (right to rectification,
