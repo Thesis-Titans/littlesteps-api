@@ -1,7 +1,7 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
-import { aiRateLimit } from "./ai/rate-limit.js";
+import { aiRateLimit, parseTrustProxyHops } from "./ai/rate-limit.js";
 import { aiRouter } from "./ai/ai-router.js";
 import { catalogRouter } from "./catalog/catalog-router.js";
 import { childrenRouter } from "./children/children-router.js";
@@ -19,7 +19,8 @@ app.disable("x-powered-by");
 // One trusted proxy hop (the Google front end on Cloud Functions): req.ip is then the rightmost
 // X-Forwarded-For entry, which that proxy appends. Earlier entries are client-supplied and are ignored.
 // shortcut: not verified on a deployed function; if more proxies sit in front, per-IP counts will be wrong.
-app.set("trust proxy", 1);
+// Hop count comes from TRUST_PROXY_HOPS (default 1); verify it on a deployed function.
+app.set("trust proxy", parseTrustProxyHops(process.env.TRUST_PROXY_HOPS));
 app.use(helmet());
 // Default for every route, including errors; the catalog router overrides it with its public caching.
 app.use((_request, response, next) => {
