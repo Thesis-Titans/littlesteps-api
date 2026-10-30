@@ -3,7 +3,7 @@ info:
   title: LittleSteps API
   version: 0.2.0
   description: >-
-    Health, identity and learning-catalog endpoints are implemented. Child-profile
+    Health, identity, learning-catalog and AI recommendation endpoints are implemented. Child-profile
     operations are a reviewable design contract for Issue 7, not implemented routes.
     Open decisions D5 (deletion execution) and D6 (production retention) in
     docs/child-profile-contract.md block only the deletion API and production
@@ -217,6 +217,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/ai/recommendations:
+    post:
+      operationId: createAiRecommendations
+      summary: Suggest reviewed catalog activities for an age band
+      description: |
+        Constrained activity suggestions (api-reference.md section 6). Only reviewed_approved catalog
+        items are ever returned; titles and instructions always come from the catalog. The request
+        carries no child or caregiver identifiers and unknown fields are rejected. A provider failure
+        or invalid provider output is never an error: the response falls back to deterministic
+        catalog ranking (tier 3). With no reviewed content the response is 200 with an empty list.
+        Responses are never cached.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+      responses:
+        '200':
+          description: Suggestions with provenance
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          # Not implemented yet: rate limiting is a later change.
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/children:
     post:
       operationId: createChild
@@ -467,6 +506,85 @@ components:
         present, ageBand is derived on read from the UTC calendar month; a child
         past 71 months stays at 60-71m (conservative; no new field, never
         rejected on read). A caregiver-selected band is returned as stored.
+    RecommendationRequest:
+      type: object
+      additionalProperties: false
+      required: [ageBand, timeMinutes, language]
+      properties:
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+        domain:
+          $ref: '#/components/schemas/Domain'
+        setting:
+          allOf:
+            - $ref: '#/components/schemas/Setting'
+          default: either
+        timeMinutes:
+          type: integer
+          minimum: 5
+          maximum: 120
+        materials:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 40
+        language:
+          $ref: '#/components/schemas/Language'
+        count:
+          type: integer
+          minimum: 1
+          maximum: 3
+          default: 3
+    RecommendationResponse:
+      type: object
+      required: [suggestions, source, tier, provenance]
+      properties:
+        suggestions:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            required: [activityId, title, whyPicked, activity]
+            properties:
+              activityId:
+                type: string
+              title:
+                type: string
+              whyPicked:
+                type: string
+                maxLength: 140
+              activity:
+                $ref: '#/components/schemas/CatalogActivity'
+        source:
+          type: string
+          enum: [ai, catalog_fallback]
+        tier:
+          type: integer
+          enum: [1, 2, 3]
+        provenance:
+          type: object
+          required: [badge, label, disclaimer, model, reviewed]
+          properties:
+            badge:
+              type: [string, 'null']
+              enum: [Suggested by AI, null]
+            label:
+              type: [string, 'null']
+              enum: [Our picks, null]
+            disclaimer:
+              type: string
+            guidance:
+              type: string
+              description: Present only when source is ai.
+            model:
+              type: [string, 'null']
+            reviewed:
+              type: boolean
+              const: true
+        reason:
+          type: string
+          enum: [NO_REVIEWED_CONTENT]
     ErrorEnvelope:
       type: object
       additionalProperties: false
@@ -729,6 +847,18 @@ components:
           examples:
             missingOrNotOwned:
               value: { error: { code: RESOURCE_NOT_FOUND, message: Resource not found } }
+    InternalError:
+      description: Unexpected server error. No internal detail disclosed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheControlNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            internal:
+              value: { error: { code: INTERNAL_ERROR, message: An unexpected error occurred } }
     RateLimited:
       x-implementation-status: not-implemented
       description: >-

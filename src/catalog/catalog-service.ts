@@ -65,6 +65,17 @@ export function buildUserAgent(contact: string | undefined): string {
 export function setCatalogActivities(items: CatalogActivity[]): void {
   activitiesStore = validateActivities(items);
 }
+
+/** Only reviewed_approved items; the sole read path other modules (such as AI suggestions) may use. */
+export function getApprovedActivities(): CatalogActivity[] {
+  return activitiesStore.filter((item) => item.status === "reviewed_approved");
+}
+
+/** Test-only: loads approved items without the fixture guard. Does nothing outside NODE_ENV=test. */
+export function setApprovedActivitiesForTest(items: CatalogActivity[]): void {
+  if (process.env.NODE_ENV !== "test") return;
+  activitiesStore = items.map((item) => CatalogActivitySchema.parse(item));
+}
 const fallbackBooks: BookItem[] = FALLBACK_BOOKS;
 
 export function getCatalogActivities(query: CatalogActivitiesQuery): { total: number; items: CatalogActivity[] } {
