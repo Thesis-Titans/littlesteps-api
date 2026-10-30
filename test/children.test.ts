@@ -37,6 +37,34 @@ describe("schemas", () => {
     expect(r.nickname).toBe("Sample Child");
   });
 
+  it("rejects control and invisible characters in nicknames", () => {
+    for (const nickname of ["\u200b", "\u0007x", "a\u200bb", "\u200b a"]) {
+      expect(CreateChildSchema.safeParse({ nickname, ageBand: "0-5m" }).success).toBe(false);
+    }
+  });
+
+  it("accepts accented, emoji and Filipino nicknames", () => {
+    for (const nickname of ["Niño", "Ma. Luisa", "José 🌟"]) {
+      expect(CreateChildSchema.safeParse({ nickname, ageBand: "0-5m" }).success).toBe(true);
+    }
+  });
+
+  it("reports object-level issues with a usable field", () => {
+    const unknown = JSON.parse('{"nickname":"A","ageBand":"0-5m","__proto__":1,"caregiverId":"x"}');
+    const r = CreateChildSchema.safeParse(unknown);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const d = toErrorDetails(r.error);
+      expect(d).toContainEqual({ field: "caregiverId", issue: "Unknown field" });
+      expect(d.every((x) => x.field !== "")).toBe(true);
+    }
+    for (const body of [null, []]) {
+      const b = CreateChildSchema.safeParse(body);
+      expect(b.success).toBe(false);
+      if (!b.success) expect(toErrorDetails(b.error)[0].field).toBe("body");
+    }
+  });
+
   it("rejects empty, whitespace-only and over-long nicknames", () => {
     for (const nickname of ["", "   ", "x".repeat(51)]) {
       expect(CreateChildSchema.safeParse({ nickname, ageBand: "0-5m" }).success).toBe(false);
