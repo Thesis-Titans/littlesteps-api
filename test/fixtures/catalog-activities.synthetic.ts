@@ -1,4 +1,4 @@
-import type { CatalogActivity } from "../types.js";
+import type { CatalogActivity } from "../../src/catalog/types.js";
 
 export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
   {
@@ -17,7 +17,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Position an unbreakable mirror in their direct line of sight.",
       "Gently talk or sing to encourage lifting their head to see their reflection."
     ],
-    provenanceSource: "Synthetic engineering fixture based on ECCD Care for Child Development guidelines",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -37,7 +37,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Clap hands gently in cadence to the traditional rhyme Pen-pen de Sarapen.",
       "Gently tap baby's palms together during the chorus to encourage clapping reflex."
     ],
-    provenanceSource: "Synthetic engineering fixture (Traditional Philippine Nursery Rhyme)",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -57,7 +57,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Encourage the toddler to crawl over the gentle incline toward a favorite toy.",
       "Stay close to spot and praise balance and spatial coordination."
     ],
-    provenanceSource: "Synthetic engineering fixture based on gross-motor movement milestones",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -77,7 +77,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Provide clean plastic bowls and spoons for pretend meal preparation.",
       "Join the pretend play, asking questions like 'Ano ang niluluto natin ngayon?'"
     ],
-    provenanceSource: "Synthetic engineering fixture (Traditional Philippine Dramatic Play)",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -97,7 +97,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Demonstrate placing one item in each container.",
       "Invite the child to sort the remaining pile by color or size."
     ],
-    provenanceSource: "Synthetic engineering fixture based on early cognitive categorization",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -117,7 +117,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Imitate fishing and rowing movements together.",
       "Discuss what kinds of fish live in Philippine waters."
     ],
-    provenanceSource: "Synthetic engineering fixture (Visayan Folklore / ECCD Cultural Heritage)",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   },
@@ -137,7 +137,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Have the child toss the beanbag into square 1 and hop over it on one foot.",
       "Turn around at the end and hop back, picking up the marker on the return."
     ],
-    provenanceSource: "Synthetic engineering fixture (Traditional Philippine Larong Pinoy)",
+    provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   }

@@ -135,6 +135,8 @@ paths:
           description: Canonical activity ID
           schema:
             type: string
+            maxLength: 64
+            pattern: '^[a-z0-9-]+$'
       responses:
         '200':
           description: Catalog item found
@@ -147,8 +149,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CatalogActivity'
+        '400':
+          description: Invalid activity id format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '404':
-          description: Item not found in catalog
+          description: Item not found in catalog (code RESOURCE_NOT_FOUND)
           content:
             application/json:
               schema:
@@ -165,9 +173,11 @@ paths:
         - name: subject
           in: query
           required: false
-          description: Book subject
+          description: Book subject (allowlist)
           schema:
             type: string
+            maxLength: 64
+            enum: [picture_books, bedtime, colors, animals]
             default: picture_books
         - name: limit
           in: query
@@ -180,12 +190,17 @@ paths:
             default: 12
       responses:
         '200':
-          description: Picture book list with provenance
+          description: Picture book list with provenance. Fallback responses use max-age=60.
           headers:
             Cache-Control:
               schema:
                 type: string
                 example: public, max-age=3600
+            X-Cache:
+              description: Whether the response was served from the server-side cache
+              schema:
+                type: string
+                enum: [HIT, MISS]
           content:
             application/json:
               schema:
@@ -311,7 +326,7 @@ components:
             - Encourage child to act out everyday household routines.
         provenanceSource:
           type: string
-          example: ECCD Council Early Learning Resource Package (Synthetic Fixture)
+          example: Synthetic engineering fixture; no external source
         status:
           $ref: '#/components/schemas/ReviewStatus'
         limitations:
@@ -339,8 +354,7 @@ components:
             type: string
           example: ["Eric Carle"]
         coverUrl:
-          type: string
-          nullable: true
+          type: [string, "null"]
           example: https://covers.openlibrary.org/b/id/7835968-M.jpg
         subjects:
           type: array
@@ -376,7 +390,7 @@ components:
               example: Open Library (Internet Archive)
             license:
               type: string
-              example: Public Domain / Open Access
+              example: "Metadata: Open Library, CC0"
 
     ErrorEnvelope:
       type: object
