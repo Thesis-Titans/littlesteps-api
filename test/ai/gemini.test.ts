@@ -54,6 +54,19 @@ describe("GeminiProvider", () => {
     expect(JSON.stringify(logs)).not.toContain(KEY);
   });
 
+  it("rejects a reply whose content-length exceeds 64KB", async () => {
+    const f = mockFetch(async () => new Response("{}", { headers: { "content-length": String(64 * 1024 + 1) } }));
+    const error = await new GeminiProvider(KEY, "m", f).suggest("p", signal()).catch((e: unknown) => e as Error);
+    expect(error.name).toBe("GeminiError");
+    expect(error.message).toBe("Gemini reply was too large");
+  });
+
+  it("stops reading a body over 64KB when no content-length is sent", async () => {
+    const f = mockFetch(async () => new Response("x".repeat(64 * 1024 + 1)));
+    const error = await new GeminiProvider(KEY, "m", f).suggest("p", signal()).catch((e: unknown) => e as Error);
+    expect(error.message).toBe("Gemini reply was too large");
+  });
+
   it("does not leak the key when fetch fails or is aborted", async () => {
     const f = mockFetch(async () => { throw new Error(`connect failed using ${KEY}`); });
     const error = await new GeminiProvider(KEY, "m", f).suggest("p", signal()).catch((e: unknown) => e as Error);
@@ -144,5 +157,35 @@ describe("CircuitBreakerProvider", () => {
       expect(res.source).toBe("catalog_fallback");
     }
     expect(inner.calls).toBe(3);
+  });
+});
+
+describe("CircuitBreakerProvider overlap", () => {
+  it("does not admit a second trial when a call started before opening finishes during the trial", async () => {
+    let clock = 0;
+    let hang = true;
+    const gates: Array<{ reject: () => void; resolve: () => void }> = [];
+    const inner = {
+      model: "m",
+      suggest: () =>
+        hang
+          ? new Promise<unknown>((resolve, reject) => gates.push({ resolve: () => resolve("ok"), reject: () => reject(new Error("late")) }))
+          : Promise.reject(new Error("down"))
+    };
+    const breaker = new CircuitBreakerProvider(inner, () => clock);
+    const older = breaker.suggest("p", signal()).catch(() => undefined); // starts while closed
+    hang = false;
+    for (let i = 0; i < 3; i++) await breaker.suggest("p", signal()).catch(() => undefined); // opens it
+    hang = true;
+    clock += OPEN_MS;
+    const trial = breaker.suggest("p", signal()).catch(() => undefined); // half-open trial
+    expect(gates.length).toBe(2);
+    gates[0]!.reject(); // the older call fails while the trial runs
+    await older;
+    clock += OPEN_MS; // old breaker deadline has passed again
+    await expect(breaker.suggest("p", signal())).rejects.toThrow("circuit open");
+    expect(gates.length).toBe(2);
+    gates[1]!.resolve();
+    await trial;
   });
 });

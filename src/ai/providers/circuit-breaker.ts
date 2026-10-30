@@ -23,6 +23,7 @@ export class CircuitBreakerProvider implements AiProvider {
     const halfOpen = this.failures >= FAILURE_THRESHOLD;
     if (halfOpen && (this.now() < this.openUntil || this.trialInFlight)) throw new Error("circuit open");
     if (halfOpen) this.trialInFlight = true;
+    const isTrial = halfOpen; // only the half-open trial may clear the flag; older overlapping calls must not
     try {
       const reply = await this.inner.suggest(prompt, signal);
       this.failures = 0;
@@ -32,7 +33,7 @@ export class CircuitBreakerProvider implements AiProvider {
       if (this.failures >= FAILURE_THRESHOLD) this.openUntil = this.now() + OPEN_MS;
       throw error;
     } finally {
-      this.trialInFlight = false;
+      if (isTrial) this.trialInFlight = false;
     }
   }
 }
