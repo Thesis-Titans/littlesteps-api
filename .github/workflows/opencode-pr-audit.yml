@@ -40,6 +40,7 @@ jobs:
       - name: Run OpenCode Backend QA Audit (Gemini 2.5 Flash — Free)
         uses: anomalyco/opencode/github@latest
         env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
