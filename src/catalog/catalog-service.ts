@@ -17,6 +17,8 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (per api-reference.md §5.1)
 // Fix #3: Cap cache at 100 entries to bound memory under unauthenticated arbitrary subject queries.
 const CACHE_MAX_ENTRIES = 100;
 const FALLBACK_CACHE_TTL_MS = 60 * 1000; // short TTL so a transient outage recovers quickly
+const OPEN_LIBRARY_LICENSE =
+  "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights";
 const booksCache = new Map<string, CacheEntry>();
 
 // Fix #1: Synthetic fixture files are engineering-only content and must NEVER be
@@ -116,9 +118,13 @@ export async function getBooksCatalog(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
+    const contact = process.env.OPEN_LIBRARY_CONTACT;
+    const userAgent = contact
+      ? `LittleSteps-API/0.2.0 (Thesis Academic Project; contact: ${contact})`
+      : "LittleSteps-API/0.2.0 (Thesis Academic Project)";
     const res = await fetch(upstreamUrl, {
       signal: controller.signal,
-      headers: { "User-Agent": "LittleSteps-API/0.2.0 (Thesis Academic Project)" }
+      headers: { "User-Agent": userAgent }
     });
     clearTimeout(timeoutId);
 
@@ -154,9 +160,9 @@ export async function getBooksCatalog(
       totalCount: data.work_count ?? books.length,
       books,
       provenance: {
-        // Fix #2: Open Library metadata is CC0; individual books may be copyrighted.
+        // Fix #2: Open Library data licensing; covers and books may carry their own rights.
         source: "Open Library (Internet Archive)",
-        license: "Metadata: Open Library, CC0"
+        license: OPEN_LIBRARY_LICENSE
       }
     };
 
@@ -170,9 +176,9 @@ export async function getBooksCatalog(
       totalCount: slicedFallback.length,
       books: slicedFallback,
       provenance: {
-        // Fix #2: Same CC0 correction for the fallback path.
+        // Fix #2: Same licence text for the fallback path.
         source: "local-fallback",
-        license: "Metadata: Open Library, CC0"
+        license: OPEN_LIBRARY_LICENSE
       }
     };
 

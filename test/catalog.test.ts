@@ -12,17 +12,17 @@ const MOCK_OPEN_LIBRARY_RESPONSE = {
   work_count: 2,
   works: [
     {
-      key: "/works/OL7835968W",
+      key: "/works/OL52987W",
       title: "The Very Hungry Caterpillar",
       authors: [{ name: "Eric Carle" }],
       cover_id: 7835968,
       subject: ["Caterpillars", "Picture books"]
     },
     {
-      key: "/works/OL262758W",
+      key: "/works/OL151798W",
       title: "Goodnight Moon",
       authors: [{ name: "Margaret Wise Brown" }],
-      cover_id: 8231996,
+      cover_id: 35556,
       subject: ["Bedtime"]
     }
   ]
@@ -178,7 +178,7 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
   // -------------------------------------------------------------------------
 
   describe("GET /api/v1/catalog/books", () => {
-    it("returns picture books with provenance and CC0 metadata attribution from Open Library", async () => {
+    it("returns picture books with provenance and licence text from Open Library", async () => {
       vi.stubGlobal("fetch", makeFetchOk(MOCK_OPEN_LIBRARY_RESPONSE));
 
       const res = await request(app).get("/api/v1/catalog/books?subject=picture_books&limit=2");
@@ -187,9 +187,9 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.body).toHaveProperty("subject", "picture_books");
       expect(Array.isArray(res.body.books)).toBe(true);
       expect(res.body.books).toHaveLength(2);
-      expect(res.body.books[0].id).toBe("OL7835968W");
-      // Fix #2: license must use the CC0 attribution label
-      expect(res.body.provenance.license).toBe("Metadata: Open Library, CC0");
+      expect(res.body.books[0].id).toBe("OL52987W");
+      // Fix #2: license must use the Open Library licence text
+      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights");
     });
 
     it("serves a cache HIT on subsequent identical request without calling fetch again", async () => {
@@ -212,9 +212,9 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       const res = await request(app).get("/api/v1/catalog/books?subject=picture_books&limit=3");
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.books)).toBe(true);
-      // Fallback serves local curated books with the CC0 attribution label
+      // Fallback serves local curated books with the Open Library licence text
       expect(res.body.provenance.source).toBe("local-fallback");
-      expect(res.body.provenance.license).toBe("Metadata: Open Library, CC0");
+      expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); cover images may carry their own rights");
     });
 
     it("falls back to local fixture when Open Library returns a 500 error", async () => {
