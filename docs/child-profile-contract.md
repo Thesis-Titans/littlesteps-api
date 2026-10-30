@@ -51,7 +51,7 @@ The candidate month calculation is
 `12 * (currentYear - birthYear) + currentMonth - birthMonth`.
 **Decided (D2):** age is computed from the server's UTC calendar month. The band
 is derived on read from `birthMonth`, so it never goes stale. A birth month that
-is in the future or more than 71 months ago is rejected on create/edit with
+is in the future or more than 71 months ago (months = (current year × 12 + current month) − (birth year × 12 + birth month), in UTC; 0 to 71 inclusive is accepted) is rejected on create/edit with
 `422 UNPROCESSABLE_ENTITY` (shape errors such as `2025-13` stay `400`). On read,
 an existing child who has passed 71 months stays at `60-71m` (conservative
 "outgrown" behaviour: never an error, no new field, no clamping on write).
@@ -167,7 +167,7 @@ also send `Content-Type: application/json`.
    Malformed UUID syntax uses proposed 400 `INVALID_INPUT`, not an ownership lookup.
 10. **Age out of range:** POST `{"nickname":"Sample Child","birthMonthYear":"2027-01"}`
     (future) or `"2019-01"` (over 71 months) proposes 422:
-    `{"error":{"code":"UNPROCESSABLE_ENTITY","message":"Child age must be between 0 and 71 months"}}`.
+    `{"error":{"code":"UNPROCESSABLE_ENTITY","message":"Child age must be between 0 and 71 months","details":[{"field":"birthMonthYear","issue":"Must not be in the future or older than 71 months"}]}}`.
     PATCH `{"birthMonthYear":"2025-07"}` corrects age with the same checks.
 11. **Missing child:** Assume `8c2bce8d-9066-428d-aafa-c26761845c6e` is absent.
     A's GET or PATCH at that child path receives the identical 404 body from

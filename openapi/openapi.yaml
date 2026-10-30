@@ -57,7 +57,7 @@ paths:
         caregiverId from the verified token UID, and UTC timestamps. No
         client-supplied identity establishes ownership. When birthMonthYear is
         given, the server derives the band from its UTC calendar month. A future
-        month, or one more than 71 months ago, returns 422 UNPROCESSABLE_ENTITY.
+        month, or one more than 71 months ago, returns 422 UNPROCESSABLE_ENTITY. Months are counted in UTC as (current year x 12 + current month) - (birth year x 12 + birth month); 0 to 71 inclusive is accepted.
       x-implementation-status: not-implemented
       x-contract-status: proposed-pending-review
       security:
