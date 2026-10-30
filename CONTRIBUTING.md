@@ -47,7 +47,7 @@ npm run test:emulator
 
 - **Branching:** Work on focused topic branches (`feat/`, `fix/`, `docs/`, `chore/`). Never push directly to `main`.
 - **Required CI Check:** The GitHub Actions workflow enforces **`API CI/verify`**, which executes linting, typechecking, building, unit tests, and emulator integration tests.
-- **Review Governance:** During the initial setup phase, Mark Alvin Cadangin serves as the required human review and approval boundary before any PR may be merged into `main`.
+- **Review Governance:** In the active feature execution phase, every pull request requires review and approval from at least one teammate. Pull requests modifying data contracts, authentication, security rules, or AI prompts/fallbacks require an additional review from Mark.
 
 ---
 
