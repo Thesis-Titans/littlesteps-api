@@ -147,5 +147,5 @@ describe("AI rate limiter against the Firestore emulator", () => {
     expect(docs.size).toBe(1);
     expect(Object.keys(docs.docs[0].data()).sort()).toEqual(["bucket", "count", "expiresAt", "uid"]);
     expect(docs.docs[0].data().count).toBe(10);
-  });
+  }, 60_000);
 });
