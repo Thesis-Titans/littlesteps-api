@@ -77,15 +77,6 @@ All other routes, including errors, respond with `Cache-Control: no-store`.
 - If a limiter store errors, the request is allowed (fail open) and only `{"event":"ai.rate_limit_unavailable"}` is logged, so an outage does not take suggestions down.
 - Tests inject limiters with `setRateLimiter()` and `setIpRateLimiter()`; the Firestore limiter is covered by the emulator suite.
 
-#### AI rate limiting
-- Limits: 10 requests per signed-in user and, by default, 30 per IP address (`AI_IP_LIMIT_PER_HOUR`), each per clock hour (fixed window, UTC; a burst across an hour boundary can use up to twice the limit). Over the limit: `429 RATE_LIMITED`, `Retry-After` = seconds until the window resets (1 to 3600), `Cache-Control: no-store`.
-- Every authenticated request counts, including ones rejected for invalid input, and the check runs before the provider call. Unauthenticated requests are rejected earlier and are not counted. The IP check runs first, so a blocked address does not write to Firestore.
-- Per-user counters live in Firestore at `rate_limits/{uid}_{hourBucket}` and hold only `uid`, `bucket`, `count` and `expiresAt`, updated in a transaction. Enable a Firestore TTL policy on `rate_limits.expiresAt` (`gcloud firestore fields ttls update expiresAt --collection-group=rate_limits`) so old windows are deleted; this has not been applied to any project yet.
-- Per-IP counters are in memory, per function instance, so that cap is best effort and resets on restart. The app trusts `TRUST_PROXY_HOPS` proxy hops (default 1, integer >= 0, invalid values fall back to 1): `req.ip` is the rightmost `X-Forwarded-For` entry, which the Google front end appends; earlier, client-supplied entries are ignored. This has not been checked on a deployed function. If the real proxy chain differs, the per-IP cap may group unrelated users (locking them out) or be bypassable.
-- `AI_IP_LIMIT_PER_HOUR` sets the per-IP limit (default 30; `0` disables the per-IP cap entirely and no IP is counted; invalid values fall back to 30). **Warning: verify on a deployed function (log `req.ip` once in a staging call) before relying on the per-IP cap; set `AI_IP_LIMIT_PER_HOUR=0` to turn it off.** The per-user cap (10/hour, Firestore) is unaffected.
-- If a limiter store errors, the request is allowed (fail open) and only `{"event":"ai.rate_limit_unavailable"}` is logged, so an outage does not take suggestions down.
-- Tests inject limiters with `setRateLimiter()` and `setIpRateLimiter()`; the Firestore limiter is covered by the emulator suite.
-
 ### Planned Feature & Integration Endpoints:
 - `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
 
