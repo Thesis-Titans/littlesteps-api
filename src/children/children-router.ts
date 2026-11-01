@@ -12,7 +12,7 @@ let store: ChildrenStore | undefined;
 export function setChildrenStore(next: ChildrenStore | undefined): void {
   store = next;
 }
-const getStore = () => (store ??= createFirestoreChildrenStore());
+export const getChildrenStore = (): ChildrenStore => (store ??= createFirestoreChildrenStore());
 
 const notFound = (response: Response) =>
   response.status(404).json({ error: { code: "RESOURCE_NOT_FOUND", message: "Resource not found" } });
@@ -48,7 +48,7 @@ const idOf = (request: Request): string | null => {
 
 childrenRouter.get("/", async (request, response) => {
   const now = new Date();
-  const children = await getStore().list(uidOf(request));
+  const children = await getChildrenStore().list(uidOf(request));
   children.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   response.status(200).json(children.map((c) => toPublic(c, now)));
 });
@@ -73,7 +73,7 @@ childrenRouter.post("/", async (request, response) => {
   const child = toStored(parsed.data, uidOf(request), randomUUID(), now);
   let created: boolean;
   try {
-    created = await getStore().create(uidOf(request), child);
+    created = await getChildrenStore().create(uidOf(request), child);
   } catch (error) {
     if (!isAborted(error)) throw error;
     return void unavailable(response);
@@ -92,7 +92,7 @@ childrenRouter.post("/", async (request, response) => {
 
 childrenRouter.get("/:childId", async (request, response) => {
   const id = idOf(request);
-  const child = id && (await getStore().get(uidOf(request), id));
+  const child = id && (await getChildrenStore().get(uidOf(request), id));
   if (!child) return void notFound(response);
   response.status(200).json(toPublic(child, new Date()));
 });
@@ -105,7 +105,7 @@ childrenRouter.patch("/:childId", async (request, response) => {
   if (!rangeCheck(response, parsed.data.birthMonthYear, now)) return;
   let next;
   try {
-    next = id && (await getStore().update(uidOf(request), id, (current) => applyUpdate(current, parsed.data, now)));
+    next = id && (await getChildrenStore().update(uidOf(request), id, (current) => applyUpdate(current, parsed.data, now)));
   } catch (error) {
     if (!isAborted(error)) throw error;
     return void unavailable(response);
