@@ -24,7 +24,7 @@ LittleSteps uses a three-tier documentation structure. System architecture, prod
 ---
 
 ## Local Setup & Verification
-1. Copy `.env.example` to `.env` and configure comma-separated `CORS_ORIGINS` for local web origins. Do not commit secrets.
+1. Copy `.env.example` to `.env` and configure comma-separated `CORS_ORIGINS` for local web origins (defaults to `http://localhost:5173,http://127.0.0.1:5173` if unset). Do not commit secrets.
    - Optional `OPEN_LIBRARY_CONTACT`: a contact email or phone added to the Open Library User-Agent. Open Library asks API users for an app name and a contact email or phone: https://openlibrary.org/developers/api
    - Books responses carry this licence text: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights".
 2. Run `npm ci` to install dependencies from the lockfile.

@@ -48,3 +48,41 @@ describe("request body limits", () => {
     expect(response.body.error.code).toBe("INVALID_JSON");
   });
 });
+
+describe("CORS configuration", () => {
+  it("allows localhost:5173 by default", async () => {
+    const response = await request(app)
+      .get("/health")
+      .set("Origin", "http://localhost:5173");
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+  });
+
+  it("allows 127.0.0.1:5173 by default", async () => {
+    const response = await request(app)
+      .get("/health")
+      .set("Origin", "http://127.0.0.1:5173");
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:5173");
+  });
+
+  it("handles OPTIONS preflight for allowed origins", async () => {
+    const response = await request(app)
+      .options("/health")
+      .set("Origin", "http://127.0.0.1:5173")
+      .set("Access-Control-Request-Method", "GET");
+    expect(response.status).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:5173");
+    expect(response.headers["access-control-allow-methods"]).toContain("GET");
+  });
+
+  it("rejects unauthorized origins with ORIGIN_NOT_ALLOWED 403", async () => {
+    const response = await request(app)
+      .get("/health")
+      .set("Origin", "http://unauthorized-origin.com");
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed" }
+    });
+  });
+});
