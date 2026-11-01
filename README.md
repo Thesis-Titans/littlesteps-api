@@ -1,6 +1,6 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only; other abuse protection, data export and deletion are not implemented yet.
+Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes, milestone observations (`/api/v1/children/:childId/milestones`), activity planning (`/api/v1/children/:childId/plans`), and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only; other abuse protection, data export and deletion are not implemented yet.
 
 ---
 
@@ -29,7 +29,7 @@ LittleSteps uses a three-tier documentation structure. System architecture, prod
    - Books responses carry this licence text: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights".
 2. Run `npm ci` to install dependencies from the lockfile.
 3. Run `npm run lint` to verify code style via ESLint.
-4. Run `npm run typecheck`, `npm run build`, and `npm test` for the fast unit-test baseline.
+4. Run `npm run typecheck`, `npm run build`, and `npm test` for the unit-test suite (254 passing tests).
 5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication and Firestore Emulators using the synthetic `demo-littlesteps` project.
 6. For interactive local development, run `npm run emulators -- --project demo-littlesteps`. Do not deploy to cloud environments during initial setup.
 
@@ -55,6 +55,17 @@ All other routes, including errors, respond with `Cache-Control: no-store`.
 
 ### Implemented Child Profile Endpoints (authenticated):
 - `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
+
+### Implemented Milestone Observation Endpoints (authenticated):
+- `GET /api/v1/children/{childId}/milestones` — List caregiver observations for child.
+- `POST /api/v1/children/{childId}/milestones` — Record or update milestone observation record.
+- `DELETE /api/v1/children/{childId}/milestones/{milestoneRecordId}` — Delete milestone observation record.
+
+### Implemented Activity Planning Endpoints (authenticated):
+- `GET /api/v1/children/{childId}/plans` — List activity plans for child (filterable by date, status).
+- `POST /api/v1/children/{childId}/plans` — Schedule an activity for child.
+- `PATCH /api/v1/children/{childId}/plans/{planId}` — Update activity plan or toggle completion status.
+- `DELETE /api/v1/children/{childId}/plans/{planId}` — Delete activity plan.
 
 ### Implemented AI Endpoint (authenticated):
 - `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; reviewed catalog items only. Uses Gemini only when `GEMINI_API_KEY` and `GEMINI_MODEL` are both set; otherwise, and on any provider failure, it returns the deterministic catalog fallback with 200.
