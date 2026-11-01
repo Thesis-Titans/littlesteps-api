@@ -1,9 +1,10 @@
 openapi: 3.1.0
 info:
   title: LittleSteps API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
-    Health, identity, learning-catalog, child-profile (create, list, read, update) and
+    Health, identity, learning-catalog, child-profile (create, list, read, update),
+    activity planning and completion, milestone observation records, and
     AI recommendations endpoints are implemented. The recommendations endpoint calls Gemini
     only when the GEMINI_API_KEY and GEMINI_MODEL server variables are both set; without
     them, or on any provider failure, it returns the deterministic catalog fallback. Rate
@@ -429,6 +430,277 @@ paths:
           $ref: '#/components/responses/UnprocessableAge'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/plans:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4; never evidence of ownership.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: listChildPlans
+      summary: List activity plans for an owned child
+      description: >-
+        Returns activity plans for the verified caregiver's child, optionally
+        filtered by target date or status. Ordered by scheduled date and creation timestamp.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Target scheduled date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        - name: status
+          in: query
+          required: false
+          description: Filter by routine planning status
+          schema:
+            $ref: '#/components/schemas/PlanStatus'
+      responses:
+        '200':
+          description: Array of planned activities.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Plan'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+    post:
+      operationId: createChildPlan
+      summary: Schedule or plan an activity for an owned child
+      description: >-
+        Schedules an activity for the child on a given date. Status defaults to
+        planned. When status is set to completed, completedAt is automatically recorded.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlan'
+      responses:
+        '201':
+          description: Created activity plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/plans/{planId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+      - name: planId
+        in: path
+        required: true
+        description: Server-generated plan UUIDv4.
+        schema:
+          $ref: '#/components/schemas/PlanId'
+    patch:
+      operationId: updateChildPlan
+      summary: Update activity plan or toggle completion status
+      description: >-
+        Updates status, duration, scheduled date, or caregiver feedback notes.
+        Toggling status to completed records completedAt; changing away from completed clears completedAt.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlan'
+      responses:
+        '200':
+          description: Updated activity plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      operationId: deleteChildPlan
+      summary: Remove a planned activity
+      description: Permanently deletes the planned activity from the child's routine.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Plan deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/milestones:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: listChildMilestones
+      summary: List milestone observations for an owned child
+      description: >-
+        Returns caregiver milestone observations for the child. Statuses are non-diagnostic
+        (observed, not_yet_observed, not_sure).
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by observation status
+          schema:
+            $ref: '#/components/schemas/MilestoneStatus'
+        - name: milestoneId
+          in: query
+          required: false
+          description: Filter by catalog milestone identifier
+          schema:
+            $ref: '#/components/schemas/MilestoneId'
+      responses:
+        '200':
+          description: Array of milestone observations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MilestoneObservation'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+    post:
+      operationId: recordMilestoneObservation
+      summary: Record a non-diagnostic milestone observation
+      description: >-
+        Records whether a milestone skill prompt was observed, not yet observed,
+        or not sure by the caregiver. Future observation dates return 422.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneObservation'
+      responses:
+        '201':
+          description: Recorded milestone observation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneObservation'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableObservationDate'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/milestones/{milestoneId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+      - name: milestoneId
+        in: path
+        required: true
+        description: Milestone identifier or observation UUID.
+        schema:
+          $ref: '#/components/schemas/MilestoneId'
+    patch:
+      operationId: updateMilestoneObservation
+      summary: Update a milestone observation record
+      description: >-
+        Updates status, observed date, or caregiver observation notes. Future observation dates return 422.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMilestoneObservation'
+      responses:
+        '200':
+          description: Updated milestone observation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneObservation'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableObservationDate'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 components:
   schemas:
     ChildId:
@@ -788,6 +1060,192 @@ components:
             license:
               type: string
               example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights"
+
+    PlanId:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+
+    PlanStatus:
+      type: string
+      enum:
+        - planned
+        - completed
+        - skipped
+      description: Routine planning status.
+
+    CreatePlan:
+      type: object
+      additionalProperties: false
+      required:
+        - activityId
+        - scheduledDate
+      properties:
+        activityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
+        scheduledDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        status:
+          $ref: '#/components/schemas/PlanStatus'
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+        feedbackNote:
+          type: string
+          maxLength: 300
+
+    UpdatePlan:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        activityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
+        scheduledDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        status:
+          $ref: '#/components/schemas/PlanStatus'
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+        feedbackNote:
+          type: string
+          maxLength: 300
+
+    Plan:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - childId
+        - activityId
+        - scheduledDate
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/PlanId'
+        childId:
+          $ref: '#/components/schemas/ChildId'
+        activityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
+        scheduledDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        status:
+          $ref: '#/components/schemas/PlanStatus'
+        completedAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+        feedbackNote:
+          type: string
+          maxLength: 300
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MilestoneStatus:
+      type: string
+      enum:
+        - observed
+        - not_yet_observed
+        - not_sure
+      description: Non-diagnostic caregiver observation status.
+
+    MilestoneId:
+      type: string
+      maxLength: 64
+      pattern: '^[a-zA-Z0-9_-]+$'
+
+    CreateMilestoneObservation:
+      type: object
+      additionalProperties: false
+      required:
+        - milestoneId
+        - status
+      properties:
+        milestoneId:
+          $ref: '#/components/schemas/MilestoneId'
+        status:
+          $ref: '#/components/schemas/MilestoneStatus'
+        observedDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        notes:
+          type: string
+          maxLength: 500
+
+    UpdateMilestoneObservation:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        status:
+          $ref: '#/components/schemas/MilestoneStatus'
+        observedDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        notes:
+          type: string
+          maxLength: 500
+
+    MilestoneObservation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - childId
+        - milestoneId
+        - status
+        - observedDate
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          $ref: '#/components/schemas/ChildId'
+        milestoneId:
+          $ref: '#/components/schemas/MilestoneId'
+        status:
+          $ref: '#/components/schemas/MilestoneStatus'
+        observedDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        notes:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
   examples:
     Child:
       summary: Synthetic profile; age shown as of October 2026.
@@ -874,6 +1332,22 @@ components:
                   code: UNPROCESSABLE_ENTITY
                   message: You can add up to 20 children.
                   details: [{ field: children, issue: Limit of 20 children reached }]
+    UnprocessableObservationDate:
+      description: Observation date is in the future.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheControlNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            futureDate:
+              value:
+                error:
+                  code: UNPROCESSABLE_ENTITY
+                  message: Observation date cannot be in the future
+                  details: [{ field: observedDate, issue: Must not be in the future }]
     ChildNotFound:
       description: Child missing from the caller's scope or not owned by the caller; identical response.
       headers:

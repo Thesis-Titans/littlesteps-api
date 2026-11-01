@@ -3,8 +3,10 @@ import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { aiRateLimit, parseTrustProxyHops } from "./ai/rate-limit.js";
 import { aiRouter } from "./ai/ai-router.js";
+import { activitiesRouter } from "./activities/activities-router.js";
 import { catalogRouter } from "./catalog/catalog-router.js";
 import { childrenRouter } from "./children/children-router.js";
+import { milestonesRouter } from "./milestones/milestones-router.js";
 import { requireFirebaseUser } from "./middleware/require-firebase-user.js";
 
 const app = express();
@@ -47,6 +49,8 @@ app.get("/health", (_request, response) => {
 });
 
 app.use("/api/v1/catalog", catalogRouter);
+app.use("/api/v1/children/:childId/plans", requireFirebaseUser, activitiesRouter);
+app.use("/api/v1/children/:childId/milestones", requireFirebaseUser, milestonesRouter);
 app.use("/api/v1/children", requireFirebaseUser, childrenRouter);
 
 app.use("/api/v1/ai", requireFirebaseUser, aiRateLimit, aiRouter);
