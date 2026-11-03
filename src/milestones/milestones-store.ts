@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldPath, getFirestore } from "firebase-admin/firestore";
+import { stripUndefined } from "../strip-undefined.js";
 import type { MilestonesListFilter, StoredMilestoneObservation } from "./types.js";
 
 export interface MilestonesStore {
@@ -59,7 +60,7 @@ export function createFirestoreMilestonesStore(): MilestonesStore {
       return null;
     },
     async create(uid, childId, observation) {
-      await col(uid, childId).doc(observation.id).set(observation);
+      await col(uid, childId).doc(observation.id).set(stripUndefined(observation));
       return true;
     },
     async update(uid, childId, idOrMilestoneId, fn) {
@@ -75,7 +76,7 @@ export function createFirestoreMilestonesStore(): MilestonesStore {
         const current = ownedBy(uid, childId, snap.data() as StoredMilestoneObservation);
         if (!current) return null;
         const next = fn(current);
-        tx.update(docRef, { ...next });
+        tx.set(docRef, stripUndefined(next)); // set replaces the doc, so cleared fields are removed
         return next;
       });
     }
