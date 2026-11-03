@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldPath, getFirestore } from "firebase-admin/firestore";
+import { stripUndefined } from "../strip-undefined.js";
 import type { PlansListFilter, StoredPlan } from "./types.js";
 
 export interface PlansStore {
@@ -44,7 +45,7 @@ export function createFirestorePlansStore(): PlansStore {
       return snap.exists ? ownedBy(uid, childId, snap.data() as StoredPlan) : null;
     },
     async create(uid, childId, plan) {
-      await col(uid, childId).doc(plan.id).set(plan);
+      await col(uid, childId).doc(plan.id).set(stripUndefined(plan));
       return true;
     },
     async update(uid, childId, planId, fn) {
@@ -54,7 +55,7 @@ export function createFirestorePlansStore(): PlansStore {
         const current = snap.exists ? ownedBy(uid, childId, snap.data() as StoredPlan) : null;
         if (!current) return null;
         const next = fn(current);
-        tx.update(ref, { ...next });
+        tx.set(ref, stripUndefined(next)); // set replaces the doc, so cleared fields are removed
         return next;
       });
     },
