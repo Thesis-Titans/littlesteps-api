@@ -1,6 +1,6 @@
 # Child profile and caregiver ownership contract
 
-Status: **Implemented by issue #8; decisions D5 and D6 remain open.** Issue #7 defines the
+Status: **Implemented by issue #8; decisions D5 and D6 were made on 4 November 2026.** Issue #7 defines the
 interface. Issue #8 implements it after relevant decision gates are resolved.
 This contract does not replace Mark's and the feature partner's review.
 
@@ -123,7 +123,7 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
 | `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range; 503 transient conflict while updating, retry after a moment |
 
-Paths follow the existing `/api/v1` prefix. The child routes are implemented; only D5 (deletion execution) and D6 (retention) remain open. A profile object
+Paths follow the existing `/api/v1` prefix. The child routes are implemented; D5 (deletion execution) and D6 (retention) were decided on 4 November 2026 (see below). A profile object
 or bare array avoids inventing a common success envelope; the list is not paginated. A caregiver can have at most 20 children (decision 2026-10-30). Creating a 21st returns `422 UNPROCESSABLE_ENTITY` with message `You can add up to 20 children.` and details `[{ "field": "children", "issue": "Limit of 20 children reached" }]`; the count and create are one transaction, so concurrent requests cannot exceed 20. The list returns children ordered by creation time (document ID breaks ties); its limit of 50 is now only a safety bound, since a caregiver can never have more than 20.
 Under heavy contention the create or update transaction can be aborted; the API then returns `503 SERVICE_UNAVAILABLE` (`Please try again in a moment.`) with `Retry-After: 1` and `Cache-Control: no-store`, and the client may retry. Nothing is written in that case.
 Validation errors (400/422) are returned before the ownership lookup and do not depend on the target id, so they reveal nothing about whether a child exists. Errors use the `ErrorEnvelope` schema, `{ "error": { "code", "message", "details"? } }`, where `details` is an optional array of `{ "field", "issue" }`.
@@ -218,8 +218,8 @@ database migration, owner transfer or multi-owner support is added.
 | D2: Age calculation | UTC calendar month; band derived on read; 422 on create/edit beyond 71 months or future; existing child stays at `60-71m` on read. | DECIDED (this PR review); Mark may still review. |
 | D3: Age edits | PATCH allows nickname and exactly one age source; switching replaces the source; no nulls/clearing; both sources is 400. | DECIDED (this PR review); Mark may still review. |
 | D4: HTTP/input details | Confirm normalization, methods/paths, 400 code, success projection and bare-array list. | DECIDED 2026-10-30 (Mark): trim and collapse whitespace in `nickname`; methods, paths, `400 INVALID_INPUT` / `INVALID_JSON`, success projection and a bare-array list stay as written in this contract. |
-| D5: Deletion execution | Decide orchestration, partial failures, retries, account-deletion sequencing, concurrent writes and backups; prevents orphaned private records. | BLOCKED for deletion implementation: technical lead and responsible privacy authority. |
-| D6: Production retention | Decide purpose, durations, exceptions, notice and deletion timing. Proposed 12-month inactivity rule is not approved. | BLOCKED for production policy/deployment: responsible school/team authority. |
+| D5: Deletion execution | Decide orchestration, partial failures, retries, account-deletion sequencing, concurrent writes and backups; prevents orphaned private records. | DECIDED 4 November 2026: delete inside the request; a child is removed with its subcollections by a recursive delete, an account child by child, then the caregiver document, then the Auth user last. Steps are repeatable, a failure returns `500` and the client retries, only the fact and id of a deletion are logged, and no backups are configured. |
+| D6: Production retention | Decide purpose, durations, exceptions, notice and deletion timing. Proposed 12-month inactivity rule is not approved. | DECIDED 4 November 2026: no automatic deletion; data stays until the caregiver deletes it. The 12-month inactivity idea is dropped for now and must be revisited before any real deployment. |
 
 Synthetic demo records are intended to reset with the emulator environment; no
 durable retention/recoverability guarantee is made. Exported emulator files,
