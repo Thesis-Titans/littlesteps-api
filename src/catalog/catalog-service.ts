@@ -6,6 +6,7 @@ import {
   type CatalogActivity
 } from "./types.js";
 import { FALLBACK_BOOKS } from "./fixtures/books.fallback.js";
+import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
 
 interface CacheEntry {
   timestamp: number;
@@ -52,7 +53,9 @@ function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
 
 // Production starts empty: no reviewed content exists yet, and synthetic fixtures must never be served.
 // Test-only: tests inject fixtures via setCatalogActivities(); production never calls it.
-let activitiesStore: CatalogActivity[] = [];
+// Issue #45: SERVE_SYNTHETIC_CATALOG=true loads synthetic fixtures for demo/staging builds (off by default).
+let activitiesStore: CatalogActivity[] =
+  process.env.SERVE_SYNTHETIC_CATALOG === "true" ? validateActivities(SYNTHETIC_ACTIVITIES) : [];
 
 /** Builds the Open Library User-Agent; the contact is limited to printable ASCII so fetch never rejects the header. */
 export function buildUserAgent(contact: string | undefined): string {

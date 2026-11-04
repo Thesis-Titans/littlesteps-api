@@ -30,6 +30,7 @@ LittleSteps uses a three-tier documentation structure. System architecture, prod
 2. Run `npm ci` to install dependencies from the lockfile.
 3. Run `npm run lint` to verify code style via ESLint.
 4. Run `npm run typecheck`, `npm run build`, and `npm test` for the unit-test suite (254 passing tests).
+5. **Demo/Staging only**: set `SERVE_SYNTHETIC_CATALOG=true` in `.env` to load the synthetic fixture activities into the catalog at startup. The flag is **off by default** — production must leave it unset so the catalog starts empty until reviewed content exists (docs #3). All fixtures keep `synthetic_fixture` status; the AI helper ignores them (`getApprovedActivities()` returns `[]`).
 5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication and Firestore Emulators using the synthetic `demo-littlesteps` project.
 6. For interactive local development, run `npm run emulators -- --project demo-littlesteps`. Do not deploy to cloud environments during initial setup.
 
