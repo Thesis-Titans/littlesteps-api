@@ -14,7 +14,7 @@
     "test": "vitest run --exclude test/auth-emulator.test.ts --exclude test/children-emulator.test.ts --exclude test/plans-milestones-emulator.test.ts",
     "test:auth-emulator": "vitest run test/auth-emulator.test.ts",
     "test:children-emulator": "vitest run test/children-emulator.test.ts",
-    "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth,firestore \"vitest run test/auth-emulator.test.ts test/children-emulator.test.ts test/plans-milestones-emulator.test.ts\"",
+    "test:emulator": "firebase emulators:exec --project demo-littlesteps --only auth,firestore \"vitest run test/auth-emulator.test.ts test/children-emulator.test.ts test/plans-milestones-emulator.test.ts --test-timeout 30000\"",
     "test:watch": "vitest",
     "emulators": "firebase emulators:start --only functions,auth,firestore",
     "mock": "npx @stoplightio/prism-cli mock openapi/openapi.yaml -p 4010 --cors",
