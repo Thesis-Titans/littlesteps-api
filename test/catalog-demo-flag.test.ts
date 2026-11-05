@@ -9,7 +9,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 // must re-import the module after setting the env var for each scenario.
 // ---------------------------------------------------------------------------
 
-describe("SERVE_SYNTHETIC_CATALOG env flag", { timeout: 15000 }, () => {
+describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
   beforeEach(() => {
     vi.resetModules();
   });
@@ -28,7 +28,7 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", { timeout: 15000 }, () => {
     const result = getCatalogActivities({});
     expect(result).toEqual({ total: 0, items: [] });
     expect(getApprovedActivities()).toEqual([]);
-  });
+  }, 15000);
 
   it('loads an empty catalog when the flag is "false"', async () => {
     process.env.SERVE_SYNTHETIC_CATALOG = "false";
