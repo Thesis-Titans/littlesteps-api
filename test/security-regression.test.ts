@@ -159,7 +159,7 @@ beforeEach(async () => {
     childId: CHILD_A_ID,
     caregiverId: "uid-a",
     milestoneId: MILESTONE_KEY,
-    status: "emerging",
+    status: "not_yet_observed",
     observedDate: "2026-11-05",
     notes: SECRET_NOTE_CANARY,
     createdAt: now,
@@ -387,7 +387,7 @@ describe("M5 Security Audit & Cross-Feature Authorization Matrix (Issue #14)", (
 
       const milestonesCheck = await milestonesStore.list("uid-a", CHILD_A_ID, {});
       expect(milestonesCheck).toHaveLength(1);
-      expect(milestonesCheck[0].status).toBe("emerging");
+      expect(milestonesCheck[0].status).toBe("not_yet_observed");
       expect(milestonesCheck[0].notes).toBe(SECRET_NOTE_CANARY);
     });
 
