@@ -61,4 +61,36 @@ describe("plans and milestones against the Firestore emulator", () => {
     expect(patched.status).toBe(200);
     expect(patched.body.status).toBe("observed");
   });
+
+  it("filters plans by status and date against the Firestore emulator", async () => {
+    const { auth, base } = await setup();
+    await request(app).post(`${base}/plans`).set(auth).send({ activityId: "act-1", scheduledDate: "2026-11-05", status: "completed" });
+    await request(app).post(`${base}/plans`).set(auth).send({ activityId: "act-2", scheduledDate: "2026-11-06", status: "planned" });
+
+    const filteredStatus = await request(app).get(`${base}/plans?status=completed`).set(auth);
+    expect(filteredStatus.status).toBe(200);
+    expect(filteredStatus.body).toHaveLength(1);
+    expect(filteredStatus.body[0].activityId).toBe("act-1");
+
+    const filteredDate = await request(app).get(`${base}/plans?date=2026-11-06`).set(auth);
+    expect(filteredDate.status).toBe(200);
+    expect(filteredDate.body).toHaveLength(1);
+    expect(filteredDate.body[0].activityId).toBe("act-2");
+  });
+
+  it("filters milestones by status and milestoneId against the Firestore emulator", async () => {
+    const { auth, base } = await setup();
+    await request(app).post(`${base}/milestones`).set(auth).send({ milestoneId: "ms-1", status: "observed" });
+    await request(app).post(`${base}/milestones`).set(auth).send({ milestoneId: "ms-2", status: "not_sure" });
+
+    const filteredStatus = await request(app).get(`${base}/milestones?status=observed`).set(auth);
+    expect(filteredStatus.status).toBe(200);
+    expect(filteredStatus.body).toHaveLength(1);
+    expect(filteredStatus.body[0].milestoneId).toBe("ms-1");
+
+    const filteredId = await request(app).get(`${base}/milestones?milestoneId=ms-2`).set(auth);
+    expect(filteredId.status).toBe(200);
+    expect(filteredId.body).toHaveLength(1);
+    expect(filteredId.body[0].milestoneId).toBe("ms-2");
+  });
 });

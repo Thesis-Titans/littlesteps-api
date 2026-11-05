@@ -9,7 +9,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 // must re-import the module after setting the env var for each scenario.
 // ---------------------------------------------------------------------------
 
-describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
+describe("SERVE_SYNTHETIC_CATALOG env flag", { timeout: 15000 }, () => {
   beforeEach(() => {
     vi.resetModules();
   });

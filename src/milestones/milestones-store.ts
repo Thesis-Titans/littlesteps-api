@@ -97,7 +97,6 @@ export function createMemoryMilestonesStore(): MilestonesStore & { data: Map<str
         .filter((o) => (filter?.milestoneId ? o.milestoneId === filter.milestoneId : true))
         .sort((a, b) =>
           a.observedDate.localeCompare(b.observedDate) ||
-          a.createdAt.localeCompare(b.createdAt) ||
           a.id.localeCompare(b.id)
         )
         .slice(0, MILESTONES_LIST_LIMIT);

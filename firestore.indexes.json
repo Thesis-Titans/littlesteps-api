@@ -1,4 +1,62 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "scheduledDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "scheduledDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "milestone_observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "observedDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "milestone_observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "observedDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "milestone_observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "milestoneId", "order": "ASCENDING" },
+        { "fieldPath": "observedDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "milestone_observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "milestoneId", "order": "ASCENDING" },
+        { "fieldPath": "observedDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "milestone_observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "milestoneId", "order": "ASCENDING" },
+        { "fieldPath": "observedDate", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

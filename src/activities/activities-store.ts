@@ -86,7 +86,6 @@ export function createMemoryPlansStore(): PlansStore & { data: Map<string, Store
         .filter((p) => (filter?.status ? p.status === filter.status : true))
         .sort((a, b) =>
           a.scheduledDate.localeCompare(b.scheduledDate) ||
-          a.createdAt.localeCompare(b.createdAt) ||
           a.id.localeCompare(b.id)
         )
         .slice(0, PLANS_LIST_LIMIT);
