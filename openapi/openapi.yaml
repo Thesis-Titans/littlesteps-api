@@ -624,7 +624,7 @@ paths:
       summary: Record a non-diagnostic milestone observation
       description: >-
         Records whether a milestone skill prompt was observed, not yet observed,
-        or not sure by the caregiver. Future observation dates return 422.
+        or not sure by the caregiver. Observation dates up to one day ahead of today in UTC (today in UTC+14) are accepted so caregivers in time zones ahead of UTC can record their local date; dates two or more days ahead of today in UTC return 422.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -672,7 +672,7 @@ paths:
       operationId: updateMilestoneObservation
       summary: Update a milestone observation record
       description: >-
-        Updates status, observed date, or caregiver observation notes. Future observation dates return 422.
+        Updates status, observed date, or caregiver observation notes. Observation dates up to one day ahead of today in UTC (today in UTC+14) are accepted; dates two or more days ahead of today in UTC return 422.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -1333,7 +1333,7 @@ components:
                   message: You can add up to 20 children.
                   details: [{ field: children, issue: Limit of 20 children reached }]
     UnprocessableObservationDate:
-      description: Observation date is in the future.
+      description: Observation date is more than one day ahead of today in UTC (in the future even in UTC+14).
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'

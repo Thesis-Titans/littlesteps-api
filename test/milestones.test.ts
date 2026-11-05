@@ -14,6 +14,7 @@ import { app } from "../src/app.js";
 import { setChildrenStore } from "../src/children/children-router.js";
 import { createMemoryChildrenStore } from "../src/children/children-store.js";
 import { setMilestonesStore } from "../src/milestones/milestones-router.js";
+import { isFutureDate } from "../src/milestones/schemas.js";
 import { createMemoryMilestonesStore } from "../src/milestones/milestones-store.js";
 import type { StoredChild } from "../src/children/types.js";
 
@@ -331,6 +332,54 @@ describe("milestone observation records API", () => {
       expect(res.body.error.code).toBe("INVALID_INPUT");
     });
   });
+
+    it("accepts observedDate one day ahead of UTC today (today in UTC+14) and rejects two days ahead on create and patch", async () => {
+      const tomorrowUtc = futureDate(1);
+      const twoDaysAheadUtc = futureDate(2);
+
+      const createTomorrow = await request(app)
+        .post(`/api/v1/children/${childA.id}/milestones`)
+        .set("Authorization", AUTH_A)
+        .send({
+          milestoneId: "ms-utc14-today",
+          status: "observed",
+          observedDate: tomorrowUtc
+        });
+      expect(createTomorrow.status).toBe(201);
+      expect(createTomorrow.body.observedDate).toBe(tomorrowUtc);
+
+      const createTwoDaysAhead = await request(app)
+        .post(`/api/v1/children/${childA.id}/milestones`)
+        .set("Authorization", AUTH_A)
+        .send({
+          milestoneId: "ms-two-days-ahead",
+          status: "observed",
+          observedDate: twoDaysAheadUtc
+        });
+      expect(createTwoDaysAhead.status).toBe(422);
+      expect(createTwoDaysAhead.body.error.code).toBe("UNPROCESSABLE_ENTITY");
+
+      const patchTomorrow = await request(app)
+        .patch(`/api/v1/children/${childA.id}/milestones/ms-utc14-today`)
+        .set("Authorization", AUTH_A)
+        .send({ observedDate: tomorrowUtc });
+      expect(patchTomorrow.status).toBe(200);
+      expect(patchTomorrow.body.observedDate).toBe(tomorrowUtc);
+
+      const patchTwoDaysAhead = await request(app)
+        .patch(`/api/v1/children/${childA.id}/milestones/ms-utc14-today`)
+        .set("Authorization", AUTH_A)
+        .send({ observedDate: twoDaysAheadUtc });
+      expect(patchTwoDaysAhead.status).toBe(422);
+      expect(patchTwoDaysAhead.body.error.code).toBe("UNPROCESSABLE_ENTITY");
+    });
+
+    it("checks isFutureDate boundary across UTC+14 and month rollovers", () => {
+      const now = new Date("2026-10-31T10:00:00Z");
+      expect(isFutureDate("2026-10-31", now)).toBe(false);
+      expect(isFutureDate("2026-11-01", now)).toBe(false);
+      expect(isFutureDate("2026-11-02", now)).toBe(true);
+    });
 
   describe("error handling and resilience", () => {
     it("returns 503 with Retry-After when create is aborted by contention", async () => {
