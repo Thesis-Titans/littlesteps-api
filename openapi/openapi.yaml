@@ -312,6 +312,46 @@ paths:
           $ref: '#/components/responses/UnprocessableAge'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
     get:
       operationId: listChildren
       summary: List owned child profiles
@@ -431,6 +471,46 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+
   /api/v1/children/{childId}/plans:
     parameters:
       - name: childId
@@ -511,6 +591,46 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+
   /api/v1/children/{childId}/plans/{planId}:
     parameters:
       - name: childId
@@ -557,6 +677,46 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
     delete:
       operationId: deleteChildPlan
       summary: Remove a planned activity
@@ -573,6 +733,46 @@ paths:
           $ref: '#/components/responses/ChildNotFound'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
 
   /api/v1/children/{childId}/milestones:
     parameters:
@@ -654,6 +854,46 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+
   /api/v1/children/{childId}/milestones/{milestoneId}:
     parameters:
       - name: childId
@@ -701,6 +941,86 @@ paths:
           $ref: '#/components/responses/UnprocessableObservationDate'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+
+
+  /api/v1/children/{childId}/summary/weekly:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: getWeeklySummary
+      summary: Retrieve factual weekly progress summary for an owned child
+      description: >-
+        Returns a deterministic, non-diagnostic reflection summary aggregating completed
+        activities and recorded milestone observations over a 7-day ISO calendar week.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: week
+          in: query
+          required: false
+          description: ISO 8601 week formatted as YYYY-Www (e.g. 2026-W45). Defaults to current week.
+          schema:
+            type: string
+            pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+            example: '2026-W45'
+      responses:
+        '200':
+          description: Factual weekly reflection summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklySummary'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
 components:
   schemas:
     ChildId:
@@ -1246,6 +1566,85 @@ components:
         updatedAt:
           type: string
           format: date-time
+    WeeklySummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - weekStartDate
+        - weekEndDate
+        - completedActivityCount
+        - observedMilestoneCount
+        - totalPlannedActivities
+        - domainDistribution
+        - topActivityIds
+        - reflectionPrompt
+        - generatedAt
+      properties:
+        id:
+          type: string
+          pattern: '^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$'
+          example: '2026-W45'
+        weekStartDate:
+          type: string
+          format: date
+          example: '2026-11-02'
+        weekEndDate:
+          type: string
+          format: date
+          example: '2026-11-08'
+        completedActivityCount:
+          type: integer
+          minimum: 0
+          example: 3
+        observedMilestoneCount:
+          type: integer
+          minimum: 0
+          example: 2
+        totalPlannedActivities:
+          type: integer
+          minimum: 0
+          example: 4
+        domainDistribution:
+          $ref: '#/components/schemas/DomainDistribution'
+        topActivityIds:
+          type: array
+          items:
+            type: string
+          example: ['act-synth-001', 'act-synth-002']
+        reflectionPrompt:
+          type: string
+          example: 'You engaged in shared activities and noted emerging milestones this week. Continuing everyday playful interactions nurtures learning and connection.'
+        generatedAt:
+          type: string
+          format: date-time
+          example: '2026-11-06T12:00:00.000Z'
+    DomainDistribution:
+      type: object
+      additionalProperties: false
+      required:
+        - cognitive
+        - motor
+        - language
+        - socioEmotional
+      properties:
+        cognitive:
+          type: integer
+          minimum: 0
+          example: 1
+        motor:
+          type: integer
+          minimum: 0
+          example: 2
+        language:
+          type: integer
+          minimum: 0
+          example: 1
+        socioEmotional:
+          type: integer
+          minimum: 0
+          example: 0
+
   examples:
     Child:
       summary: Synthetic profile; age shown as of October 2026.

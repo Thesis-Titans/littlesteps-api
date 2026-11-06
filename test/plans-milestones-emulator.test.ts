@@ -61,4 +61,17 @@ describe("plans and milestones against the Firestore emulator", () => {
     expect(patched.status).toBe(200);
     expect(patched.body.status).toBe("observed");
   });
+
+  it("computes weekly summary from Firestore-backed plans and milestones", async () => {
+    const { auth, base } = await setup();
+    await request(app).post(`${base}/plans`).set(auth).send({ activityId: "act-synth-001", scheduledDate: "2026-11-04", status: "completed" });
+    await request(app).post(`${base}/milestones`).set(auth).send({ milestoneId: "ms-mot-01", status: "observed", observedDate: "2026-11-05" });
+
+    const summary = await request(app).get(`${base}/summary/weekly?week=2026-W45`).set(auth);
+    expect(summary.status).toBe(200);
+    expect(summary.body.completedActivityCount).toBe(1);
+    expect(summary.body.observedMilestoneCount).toBe(1);
+    expect(summary.body.domainDistribution.motor).toBe(1);
+    expect(summary.body.topActivityIds).toEqual(["act-synth-001"]);
+  });
 });
