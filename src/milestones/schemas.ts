@@ -10,7 +10,7 @@ function isValidCalendarDate(dateStr: string): boolean {
 export function isFutureDate(dateStr: string, now: Date = new Date()): boolean {
   const [year, month, day] = dateStr.split("-").map(Number);
   const dateUtc = Date.UTC(year, month - 1, day);
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
   return dateUtc > todayUtc;
 }
 

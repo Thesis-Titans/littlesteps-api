@@ -1,6 +1,6 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), catalog, child-profile routes, milestone observations (`/api/v1/children/:childId/milestones`), activity planning (`/api/v1/children/:childId/plans`), and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only; other abuse protection, data export and deletion are not implemented yet.
+Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), account data export (`GET /api/v1/me/export`), account deletion (`DELETE /api/v1/me`), catalog, child-profile routes (including `DELETE /api/v1/children/:childId`), milestone observations (`/api/v1/children/:childId/milestones`), activity planning (`/api/v1/children/:childId/plans`), and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only.
 
 ---
 
@@ -47,6 +47,8 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 ### Baseline Scaffold Endpoints:
 - `GET /health` — public liveness health check.
 - `GET /api/v1/me` — requires `Authorization: Bearer <Firebase ID token>` and returns the verified UID.
+- `GET /api/v1/me/export` — exports the signed-in caregiver's profile, children, activity plans, milestone observations, and journal entries as JSON.
+- `DELETE /api/v1/me` — permanently deletes the signed-in caregiver's children (with subcollections), caregiver profile document, and Firebase Auth user.
 
 ### Implemented Catalog Endpoints (public, cacheable):
 - `GET /api/v1/catalog/activities` and `GET /api/v1/catalog/activities/{id}` — age-aware learning catalog (`public, max-age=3600`).
@@ -55,7 +57,7 @@ The canonical interface specification is detailed in [`docs/api-reference.md`](h
 All other routes, including errors, respond with `Cache-Control: no-store`.
 
 ### Implemented Child Profile Endpoints (authenticated):
-- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH /api/v1/children/{childId}` — Child profile management with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
+- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH`/`DELETE /api/v1/children/{childId}` — Child profile management and hard cascade deletion with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
 
 ### Implemented Milestone Observation Endpoints (authenticated):
 - `GET /api/v1/children/{childId}/milestones` — List caregiver observations for child.
@@ -102,12 +104,16 @@ at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs
 for field mappings, synthetic examples, review gates (age rules, field mapping and HTTP details decided; deletion and retention open) and privacy
 decisions. Run `npm run test:emulator` to exercise them against the Auth and Firestore emulators.
 
-Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract.
+Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract. See the [M5 Pre-Deployment Security, Authorization Regression, and Environment Readiness Review](docs/pre-deployment-security-audit.md) for the full cross-feature authorization matrix, error envelope audit, and Firebase billing/environment checklist.
 
 Still to do:
-- Child data export and deletion (D5), and retention (D6).
+- Retention review before real deployment (D6).
 - Rate limiting is done for the AI endpoint; still to do: rate limiting for the other endpoints, other abuse protections, and budget alerts before enabling AI provider calls.
 - Review Firebase billing plans, privacy obligations, and provider terms before deployment.
+- **Pre-deployment Firestore index verification (Issue #42 / Issue #14):** Deploy composite indexes via `firebase deploy --only firestore:indexes` from `firestore.indexes.json`. Required composite indexes cover:
+  - `plans`: `(status ASC, scheduledDate ASC/DESC)` for filtered plans and history queries.
+  - `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`, and `(status ASC, milestoneId ASC, observedDate ASC)`.
+  - **Query ordering decision:** The plans API orders chronologically by `scheduledDate ASC, id ASC` up to 100 items (`PLANS_LIST_LIMIT = 100`). The React web client sorts completed plans descending for the History view client-side and alerts the user if older items are truncated. Future Sprint 3 enhancements can introduce cursor-based pagination or a rolling date window.
 
 ---
 

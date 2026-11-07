@@ -10,6 +10,8 @@ export interface ChildrenStore {
   create(uid: string, child: StoredChild): Promise<boolean>;
   /** Atomic read-modify-write; returns null (and writes nothing) when missing or not owned. */
   update(uid: string, childId: string, fn: (current: StoredChild) => StoredChild): Promise<StoredChild | null>;
+  /** Deletes the owned child and its subcollections; returns false when missing or not owned. */
+  delete(uid: string, childId: string): Promise<boolean>;
 }
 
 /** Stored caregiverId must equal the path uid; a mismatch is treated as missing. */
@@ -51,6 +53,14 @@ export function createFirestoreChildrenStore(): ChildrenStore {
         tx.update(ref, { ...next });
         return next;
       });
+    },
+    async delete(uid, childId) {
+      const ref = col(uid).doc(childId);
+      const snap = await ref.get();
+      const current = snap.exists ? ownedBy(uid, snap.data() as StoredChild) : null;
+      if (!current) return false;
+      await getFirestore().recursiveDelete(ref);
+      return true;
     }
   };
 }
@@ -81,6 +91,12 @@ export function createMemoryChildrenStore(): ChildrenStore & { data: Map<string,
       const next = fn(current);
       data.set(`${uid}/${childId}`, { ...next });
       return next;
+    },
+    async delete(uid, childId) {
+      const current = ownedBy(uid, data.get(`${uid}/${childId}`));
+      if (!current) return false;
+      data.delete(`${uid}/${childId}`);
+      return true;
     }
   };
 }

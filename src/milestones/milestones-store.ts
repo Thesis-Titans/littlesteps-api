@@ -13,6 +13,7 @@ export interface MilestonesStore {
     idOrMilestoneId: string,
     fn: (current: StoredMilestoneObservation) => StoredMilestoneObservation
   ): Promise<StoredMilestoneObservation | null>;
+  deleteAllForChild?(uid: string, childId: string): Promise<void>;
 }
 
 const ownedBy = (
@@ -97,7 +98,6 @@ export function createMemoryMilestonesStore(): MilestonesStore & { data: Map<str
         .filter((o) => (filter?.milestoneId ? o.milestoneId === filter.milestoneId : true))
         .sort((a, b) =>
           a.observedDate.localeCompare(b.observedDate) ||
-          a.createdAt.localeCompare(b.createdAt) ||
           a.id.localeCompare(b.id)
         )
         .slice(0, MILESTONES_LIST_LIMIT);
@@ -128,6 +128,11 @@ export function createMemoryMilestonesStore(): MilestonesStore & { data: Map<str
       const next = fn(current);
       data.set(foundKey, { ...next });
       return next;
+    },
+    async deleteAllForChild(uid, childId) {
+      for (const k of data.keys()) {
+        if (k.startsWith(`${uid}/${childId}/`)) data.delete(k);
+      }
     }
   };
 }

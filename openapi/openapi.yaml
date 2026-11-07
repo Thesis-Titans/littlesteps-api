@@ -3,16 +3,16 @@ info:
   title: LittleSteps API
   version: 0.3.0
   description: >-
-    Health, identity, learning-catalog, child-profile (create, list, read, update),
+    Health, identity, account data export and account deletion, learning-catalog, child-profile (create, list, read, update, delete),
     activity planning and completion, milestone observation records, and
     AI recommendations endpoints are implemented. The recommendations endpoint calls Gemini
     only when the GEMINI_API_KEY and GEMINI_MODEL server variables are both set; without
     them, or on any provider failure, it returns the deterministic catalog fallback. Rate
-    limiting is implemented on the AI recommendations endpoint only. Child deletion is
-    not implemented.
-    Open decisions D5 (deletion execution) and D6 (production retention) in
-    docs/child-profile-contract.md block only the deletion API and production
-    deployment, not Issue 8.
+    limiting is implemented on the AI recommendations endpoint only. Decisions D5 (deletion execution) and D6 (production retention) in docs/child-profile-contract.md were decided on 4 November 2026; child and account deletion and JSON data export are implemented (Issue 17).
+
+
+
+
 servers:
   - url: http://127.0.0.1:5001/{projectId}/asia-southeast1/api
     description: Firebase Functions emulator; replace projectId with the local Firebase project ID.
@@ -55,6 +55,63 @@ paths:
                     type: string
         '401':
           $ref: '#/components/responses/Unauthenticated'
+    delete:
+      operationId: deleteAccount
+      summary: Permanently delete the signed-in caregiver's account and all records
+      description: >-
+        Hard cascade deletion for the verified caregiver (RA 10173 right to erasure,
+        decision D5). Deletes every owned child with all child-scoped subcollections
+        (plans, milestone observations, journal entries, weekly summaries) child by
+        child, then deletes the caregiver profile document, and finally removes the
+        Firebase Authentication user last. Every step is repeatable so a failed request
+        returns 500 and the client may retry. Only the deletion event and caregiver UID
+        are logged; no record content is written to logs.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Account and all associated records permanently deleted.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/me/export:
+    get:
+      operationId: exportAccountData
+      summary: Download all records for the signed-in caregiver and their children as JSON
+      description: >-
+        Structured JSON data portability export (RA 10173 section 18) for the verified
+        caregiver only. Returns the caregiver profile, owned child profiles, activity
+        plans, milestone observations, and private journal entries, projected without
+        internal caregiverId fields. Any attempt to target another caregiver returns
+        404 RESOURCE_NOT_FOUND. Nothing exported is written to logs.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Complete JSON export of the signed-in caregiver's records.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountExport'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/catalog/activities:
     get:
       operationId: listCatalogActivities
@@ -471,6 +528,34 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+    delete:
+      operationId: deleteChild
+      summary: Permanently delete an owned child profile and all child-scoped records
+      description: >-
+        Hard cascade deletion of an owned child and all subcollections (plans,
+        milestone observations, journal entries, weekly summaries) via recursive
+        delete inside the request (decision D5). Missing, malformed, or cross-owner
+        child IDs return the identical 404 RESOURCE_NOT_FOUND response. Only the
+        deletion event and child ID are logged; no profile or observation content
+        is written to logs.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Child profile and all child-scoped records permanently deleted.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
   /api/v1/children/{childId}/summary/weekly:
     parameters:
       - name: childId
@@ -524,7 +609,7 @@ paths:
       summary: List activity plans for an owned child
       description: >-
         Returns activity plans for the verified caregiver's child, optionally
-        filtered by target date or status. Ordered by scheduled date and creation timestamp.
+        filtered by target date or status. Ordered by scheduled date and document id.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -824,7 +909,7 @@ paths:
       summary: Record a non-diagnostic milestone observation
       description: >-
         Records whether a milestone skill prompt was observed, not yet observed,
-        or not sure by the caregiver. Future observation dates return 422.
+        or not sure by the caregiver. Observation dates up to one day ahead of today in UTC (today in UTC+14) are accepted so caregivers in time zones ahead of UTC can record their local date; dates two or more days ahead of today in UTC return 422.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -912,7 +997,7 @@ paths:
       operationId: updateMilestoneObservation
       summary: Update a milestone observation record
       description: >-
-        Updates status, observed date, or caregiver observation notes. Future observation dates return 422.
+        Updates status, observed date, or caregiver observation notes. Observation dates up to one day ahead of today in UTC (today in UTC+14) are accepted; dates two or more days ahead of today in UTC return 422.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -1532,6 +1617,107 @@ components:
           type: string
           maxLength: 500
 
+    CaregiverProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - uid
+      properties:
+        uid:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          maxLength: 60
+        weatherLocation:
+          type: object
+          additionalProperties: false
+          required: [name, latitude, longitude]
+          properties:
+            name:
+              type: string
+            latitude:
+              type: number
+            longitude:
+              type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    JournalEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - childId
+        - entryDate
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          $ref: '#/components/schemas/ChildId'
+        entryDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        content:
+          type: string
+          maxLength: 2000
+        linkedMilestoneId:
+          $ref: '#/components/schemas/MilestoneId'
+        linkedActivityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AccountExport:
+      type: object
+      additionalProperties: false
+      required:
+        - exportedAt
+        - profile
+        - children
+        - plans
+        - observations
+        - journalEntries
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        profile:
+          $ref: '#/components/schemas/CaregiverProfile'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildProfile'
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Plan'
+        observations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MilestoneObservation'
+        journalEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntry'
+
     MilestoneObservation:
       type: object
       additionalProperties: false
@@ -1732,7 +1918,7 @@ components:
                   message: You can add up to 20 children.
                   details: [{ field: children, issue: Limit of 20 children reached }]
     UnprocessableObservationDate:
-      description: Observation date is in the future.
+      description: Observation date is more than one day ahead of today in UTC (in the future even in UTC+14).
       headers:
         Cache-Control:
           $ref: '#/components/headers/CacheControlNoStore'

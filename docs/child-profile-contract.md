@@ -15,7 +15,7 @@ This contract does not replace Mark's and the feature partner's review.
 
 The authoritative interface is [OpenAPI](../openapi/openapi.yaml). Only
 `GET /health`, `GET /api/v1/me`, the catalog routes and the child create, list, read and update routes currently exist.
-Child deletion is not implemented, and rate limiting exists only on the AI recommendations endpoint.
+Child and account deletion (`DELETE /api/v1/children/{childId}`, `DELETE /api/v1/me`) and data export (`GET /api/v1/me/export`) are implemented (Issue #17), and rate limiting exists only on the AI recommendations endpoint.
 
 ## Minimum model and API/storage mapping
 
@@ -114,7 +114,7 @@ own path. UUID uniqueness is not authorization. Admin SDK
 bypasses Firestore rules, so application checks are mandatory; existing deny-all
 client rules stay intact. No sharing, delegation or ownership-transfer API exists.
 
-## Operations (implemented; DELETE planned)
+## Operations (implemented)
 
 | Method/path | Operation ID | Success | Documented failures |
 |---|---|---|---|
@@ -122,6 +122,9 @@ client rules stay intact. No sharing, delegation or ownership-transfer API exist
 | `GET /api/v1/children` | `listChildren` | 200 array, including `[]` | 401 token |
 | `GET /api/v1/children/{childId}` | `getChild` | 200 profile | 401 token; 404 missing/not owned |
 | `PATCH /api/v1/children/{childId}` | `updateChild` | 200 updated profile | 400 input/JSON; 401 token; 404 missing/not owned; 422 age out of range; 503 transient conflict while updating, retry after a moment |
+| `DELETE /api/v1/children/{childId}` | `deleteChild` | 204 no content | 401 token; 404 missing/not owned; 500 internal error; 503 transient conflict |
+| `GET /api/v1/me/export` | `exportAccountData` | 200 JSON export | 401 token; 404 cross-account attempt; 500 internal error |
+| `DELETE /api/v1/me` | `deleteAccount` | 204 no content | 401 token; 404 cross-account attempt; 500 internal error; 503 transient conflict |
 
 Paths follow the existing `/api/v1` prefix. The child routes are implemented; D5 (deletion execution) and D6 (retention) were decided on 4 November 2026 (see below). A profile object
 or bare array avoids inventing a common success envelope; the list is not paginated. A caregiver can have at most 20 children (decision 2026-10-30). Creating a 21st returns `422 UNPROCESSABLE_ENTITY` with message `You can add up to 20 children.` and details `[{ "field": "children", "issue": "Limit of 20 children reached" }]`; the count and create are one transaction, so concurrent requests cannot exceed 20. The list returns children ordered by creation time (document ID breaks ties); its limit of 50 is now only a safety bound, since a caregiver can never have more than 20.

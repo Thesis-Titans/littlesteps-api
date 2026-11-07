@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
+import { deleteChildWithRecords } from "../account/account-router.js";
 import { AgeRangeError, assertBirthMonthInRange } from "./age.js";
 import { MAX_CHILDREN, createFirestoreChildrenStore, type ChildrenStore } from "./children-store.js";
 import { applyUpdate, toPublic, toStored } from "./mapping.js";
@@ -112,6 +113,21 @@ childrenRouter.patch("/:childId", async (request, response) => {
   }
   if (!next) return void notFound(response);
   response.status(200).json(toPublic(next, now));
+});
+
+childrenRouter.delete("/:childId", async (request, response) => {
+  const id = idOf(request);
+  if (!id) return void notFound(response);
+  let deleted: boolean;
+  try {
+    deleted = await deleteChildWithRecords(uidOf(request), id);
+  } catch (error) {
+    if (!isAborted(error)) throw error;
+    return void unavailable(response);
+  }
+  if (!deleted) return void notFound(response);
+  console.info(JSON.stringify({ event: "child.deleted", childId: id }));
+  response.status(204).end();
 });
 
 export { childrenRouter };

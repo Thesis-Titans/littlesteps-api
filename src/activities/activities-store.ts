@@ -9,6 +9,7 @@ export interface PlansStore {
   create(uid: string, childId: string, plan: StoredPlan): Promise<boolean>;
   update(uid: string, childId: string, planId: string, fn: (current: StoredPlan) => StoredPlan): Promise<StoredPlan | null>;
   delete(uid: string, childId: string, planId: string): Promise<boolean>;
+  deleteAllForChild?(uid: string, childId: string): Promise<void>;
 }
 
 const ownedBy = (uid: string, childId: string, plan: StoredPlan | undefined): StoredPlan | null =>
@@ -86,7 +87,6 @@ export function createMemoryPlansStore(): PlansStore & { data: Map<string, Store
         .filter((p) => (filter?.status ? p.status === filter.status : true))
         .sort((a, b) =>
           a.scheduledDate.localeCompare(b.scheduledDate) ||
-          a.createdAt.localeCompare(b.createdAt) ||
           a.id.localeCompare(b.id)
         )
         .slice(0, PLANS_LIST_LIMIT);
@@ -110,6 +110,11 @@ export function createMemoryPlansStore(): PlansStore & { data: Map<string, Store
       if (!current) return false;
       data.delete(`${uid}/${childId}/${planId}`);
       return true;
+    },
+    async deleteAllForChild(uid, childId) {
+      for (const k of data.keys()) {
+        if (k.startsWith(`${uid}/${childId}/`)) data.delete(k);
+      }
     }
   };
 }
