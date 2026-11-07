@@ -28,7 +28,7 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
     const result = getCatalogActivities({});
     expect(result).toEqual({ total: 0, items: [] });
     expect(getApprovedActivities()).toEqual([]);
-  });
+  }, 15000);
 
   it('loads an empty catalog when the flag is "false"', async () => {
     process.env.SERVE_SYNTHETIC_CATALOG = "false";

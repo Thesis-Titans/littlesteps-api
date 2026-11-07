@@ -108,6 +108,10 @@ Still to do:
 - Child data export and deletion (D5), and retention (D6).
 - Rate limiting is done for the AI endpoint; still to do: rate limiting for the other endpoints, other abuse protections, and budget alerts before enabling AI provider calls.
 - Review Firebase billing plans, privacy obligations, and provider terms before deployment.
+- **Pre-deployment Firestore index verification (Issue #42 / Issue #14):** Deploy composite indexes via `firebase deploy --only firestore:indexes` from `firestore.indexes.json`. Required composite indexes cover:
+  - `plans`: `(status ASC, scheduledDate ASC/DESC)` for filtered plans and history queries.
+  - `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`, and `(status ASC, milestoneId ASC, observedDate ASC)`.
+  - **Query ordering decision:** The plans API orders chronologically by `scheduledDate ASC, id ASC` up to 100 items (`PLANS_LIST_LIMIT = 100`). The React web client sorts completed plans descending for the History view client-side and alerts the user if older items are truncated. Future Sprint 3 enhancements can introduce cursor-based pagination or a rolling date window.
 
 ---
 

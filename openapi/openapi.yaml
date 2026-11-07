@@ -444,7 +444,7 @@ paths:
       summary: List activity plans for an owned child
       description: >-
         Returns activity plans for the verified caregiver's child, optionally
-        filtered by target date or status. Ordered by scheduled date and creation timestamp.
+        filtered by target date or status. Ordered by scheduled date and document id.
       x-implementation-status: implemented
       security:
         - bearerAuth: []
