@@ -1,10 +1,19 @@
 import { getApprovedActivities } from "../catalog/catalog-service.js";
+import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
 import { cleanMaterials } from "./sanitize.js";
-import { buildPrompt } from "./prompt.js";
+import { buildPrompt, buildStoryPrompt } from "./prompt.js";
 import { filterEligible, rankActivities, FALLBACK_WHY } from "./fallback.js";
-import { validateOutput } from "./validate-output.js";
+import { validateOutput, validateStoryOutput } from "./validate-output.js";
 import type { AiProvider } from "./providers/provider.js";
-import { DISCLAIMER, GUIDANCE, type RecommendationRequest, type RecommendationResponse } from "./types.js";
+import {
+  DISCLAIMER,
+  GUIDANCE,
+  type RecommendationRequest,
+  type RecommendationResponse,
+  type StoryActivityRequest,
+  type StoryActivityResponse,
+  type StoryActivitySuggestion
+} from "./types.js";
 
 export const PROVIDER_TIMEOUT_MS = 8000;
 
@@ -96,4 +105,96 @@ export async function recommend(
   return fallbackResponse(ranked.map((activity) => ({
     activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
   })));
+}
+
+/**
+ * Deterministically finds a matching catalog activity based on ageBand and book subjects.
+ */
+export function findStoryFallbackActivity(ageBand: string, subjects: string[]): StoryActivitySuggestion {
+  const approved = getApprovedActivities();
+  const pool = approved.length > 0 ? approved : SYNTHETIC_ACTIVITIES;
+
+  const eligible = pool.filter((a) => a.ageBand === ageBand);
+  const candidatePool = eligible.length > 0 ? eligible : pool;
+
+  const subjectWords = subjects.map((s) => s.toLowerCase());
+  let matched = candidatePool.find((a) => {
+    const text = `${a.title} ${a.domain}`.toLowerCase();
+    return subjectWords.some((w) => text.includes(w));
+  });
+
+  if (!matched && candidatePool.length > 0) {
+    matched = candidatePool[0];
+  }
+
+  if (matched) {
+    return {
+      title: matched.title,
+      domain: matched.domain,
+      instructions: Array.isArray(matched.instructions) ? matched.instructions.join(" ") : String(matched.instructions),
+      safetyNotice: "Ensure adult supervision during all play activities."
+    };
+  }
+
+  return {
+    title: "Story Discussion and Rhyme",
+    domain: "language",
+    instructions: "Talk about the characters and pictures in the book together. Ask your child to point to familiar objects.",
+    safetyNotice: "Ensure adult supervision during play."
+  };
+}
+
+/**
+ * Suggests a companion play activity for a children's storybook.
+ * Tier 1: LLM provider (Gemini / Ollama), bounded at 8s.
+ * Tier 3: Deterministic catalog fallback on any failure, timeout, or denylist violation.
+ */
+export async function suggestStoryActivity(
+  request: StoryActivityRequest,
+  provider: AiProvider | null,
+  timeoutMs = PROVIDER_TIMEOUT_MS
+): Promise<StoryActivityResponse> {
+  const startedAt = Date.now();
+  const bookTitle = (request.bookTitle ?? request.title)!.trim();
+
+  if (provider) {
+    try {
+      const prompt = buildStoryPrompt({
+        bookTitle,
+        subjects: request.subjects,
+        ageBand: request.ageBand
+      });
+      const reply = await callWithTimeout(provider, prompt, timeoutMs);
+      const validated = validateStoryOutput(reply);
+      if (validated) {
+        logEvent("ai.story_provider_ok", 1, startedAt);
+        return {
+          bookTitle,
+          suggestion: validated,
+          provenance: {
+            tier: 1,
+            source: provider.model,
+            badge: "Suggested by AI",
+            disclaimer: DISCLAIMER
+          }
+        };
+      }
+      logEvent("ai.story_invalid_output", 3, startedAt);
+    } catch (error) {
+      logEvent("ai.story_provider_failed", 3, startedAt, error instanceof Error ? error.name : "Unknown");
+    }
+  }
+
+  logEvent("ai.story_fallback", 3, startedAt);
+  const fallback = findStoryFallbackActivity(request.ageBand, request.subjects);
+  return {
+    bookTitle,
+    suggestion: fallback,
+    provenance: {
+      tier: 3,
+      source: "catalog",
+      badge: null,
+      disclaimer: DISCLAIMER
+    }
+  };
 }

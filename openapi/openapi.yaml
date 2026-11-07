@@ -325,6 +325,47 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/ai/story-activity:
+    post:
+      operationId: createStoryActivity
+      summary: Suggest a companion play idea for a storybook
+      description: |
+        Storybook companion suggestion (api-reference.md section 6). From a book title,
+        subject tags and the child's age band, returns one short play idea with domain,
+        instructions and safety notice. The request carries no child or caregiver identifiers
+        and unknown fields are rejected. A provider failure, timeout, or invalid output falls
+        back to a deterministic catalog activity match (tier 3). Responses are never cached.
+
+        Protected by Firebase authentication and the same hourly AI rate limits as recommendations.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryActivityRequest'
+      responses:
+        '200':
+          description: Companion play idea with provenance
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryActivityResponse'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/children:
     post:
       operationId: createChild
@@ -1279,6 +1320,68 @@ components:
         reason:
           type: string
           enum: [NO_REVIEWED_CONTENT]
+    StoryActivityRequest:
+      type: object
+      additionalProperties: false
+      required: [ageBand]
+      properties:
+        bookTitle:
+          type: string
+          minLength: 1
+          maxLength: 200
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Alias for bookTitle
+        subjects:
+          type: array
+          maxItems: 10
+          default: []
+          items:
+            type: string
+            maxLength: 64
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+    StoryActivitySuggestion:
+      type: object
+      additionalProperties: false
+      required: [title, domain, instructions, safetyNotice]
+      properties:
+        title:
+          type: string
+        domain:
+          type: string
+        instructions:
+          type: string
+        safetyNotice:
+          type: string
+    StoryActivityProvenance:
+      type: object
+      additionalProperties: false
+      required: [tier, source, badge, disclaimer]
+      properties:
+        tier:
+          type: integer
+          enum: [1, 2, 3]
+        source:
+          type: string
+        badge:
+          type: [string, 'null']
+          enum: [Suggested by AI, null]
+        disclaimer:
+          type: string
+    StoryActivityResponse:
+      type: object
+      additionalProperties: false
+      required: [bookTitle, suggestion, provenance]
+      properties:
+        bookTitle:
+          type: string
+        suggestion:
+          $ref: '#/components/schemas/StoryActivitySuggestion'
+        provenance:
+          $ref: '#/components/schemas/StoryActivityProvenance'
     ErrorEnvelope:
       type: object
       additionalProperties: false
@@ -1973,7 +2076,7 @@ components:
       x-implementation-status: partial
       description: >-
         Too many requests from this IP address or caller UID. Implemented on
-        POST /api/v1/ai/recommendations only; other endpoints are not rate limited yet.
+        POST /api/v1/ai/recommendations and POST /api/v1/ai/story-activity; other endpoints are not rate limited yet.
         Wait Retry-After seconds (the real time until the hourly window resets) before retrying.
       headers:
         Retry-After:
