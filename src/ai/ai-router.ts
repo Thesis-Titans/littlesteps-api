@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
-import { recommend } from "./ai-service.js";
+import { recommend, suggestStoryActivity } from "./ai-service.js";
 import type { AiProvider } from "./providers/provider.js";
-import { RecommendationRequestSchema } from "./types.js";
+import { RecommendationRequestSchema, StoryActivityRequestSchema } from "./types.js";
 
 let provider: AiProvider | null = null;
 
@@ -25,6 +25,21 @@ aiRouter.post("/recommendations", async (request: Request, response: Response) =
   }
   response.setHeader("Cache-Control", "no-store");
   response.status(200).json(await recommend(parsed.data, provider));
+});
+
+aiRouter.post("/story-activity", async (request: Request, response: Response) => {
+  const parsed = StoryActivityRequestSchema.safeParse(request.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.flatMap((issue) =>
+      issue.code === "unrecognized_keys"
+        ? issue.keys.map((key) => ({ field: key, issue: "Unknown field" }))
+        : [{ field: issue.path.join("."), issue: issue.message }]
+    );
+    response.status(400).json({ error: { code: "INVALID_INPUT", message: "Invalid story activity request", details } });
+    return;
+  }
+  response.setHeader("Cache-Control", "no-store");
+  response.status(200).json(await suggestStoryActivity(parsed.data, provider));
 });
 
 export { aiRouter };

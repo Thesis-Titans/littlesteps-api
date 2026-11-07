@@ -54,6 +54,31 @@ export interface Pick {
   why: string;
 }
 
+const StoryReplySchema = z.object({
+  title: z.string().trim().min(1).max(60).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+  domain: z.enum(["cognitive", "motor", "language", "socioEmotional"]),
+  instructions: z.string().trim().min(1).max(300).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+  safetyNotice: z.string().trim().min(1).max(140).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w))
+});
+
+export interface StoryPick {
+  title: string;
+  domain: "cognitive" | "motor" | "language" | "socioEmotional";
+  instructions: string;
+  safetyNotice: string;
+}
+
+/** Validates LLM story companion play suggestion; returns null if any validation check fails or denylist is hit. */
+export function validateStoryOutput(reply: unknown): StoryPick | null {
+  const parsed = StoryReplySchema.safeParse(reply);
+  if (!parsed.success) return null;
+  const { title, domain, instructions, safetyNotice } = parsed.data;
+  if (hitsDenylist(title) || hitsDenylist(instructions) || hitsDenylist(safetyNotice)) {
+    return null;
+  }
+  return { title, domain, instructions, safetyNotice };
+}
+
 /** Returns the picks, or null when any part of the reply is unacceptable (the whole reply is rejected). */
 export function validateOutput(reply: unknown, candidateIds: ReadonlySet<string>, count: number): Pick[] | null {
   const parsed = ReplySchema.safeParse(reply);

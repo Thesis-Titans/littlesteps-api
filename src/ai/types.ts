@@ -43,5 +43,40 @@ export interface RecommendationResponse {
   reason?: "NO_REVIEWED_CONTENT";
 }
 
+// Strict schema for story companion activity requests
+export const StoryActivityRequestSchema = z
+  .object({
+    bookTitle: z.string().trim().min(1).max(200).optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    subjects: z.array(z.string().trim().max(64)).max(10).default([]),
+    ageBand: AgeBandSchema
+  })
+  .strict()
+  .refine((data) => Boolean(data.bookTitle || data.title), {
+    message: "Either bookTitle or title must be provided",
+    path: ["bookTitle"]
+  });
+export type StoryActivityRequest = z.infer<typeof StoryActivityRequestSchema>;
+
+export interface StoryActivitySuggestion {
+  title: string;
+  domain: string;
+  instructions: string;
+  safetyNotice: string;
+}
+
+export interface StoryActivityProvenance {
+  tier: 1 | 2 | 3;
+  source: string;
+  badge: "Suggested by AI" | null;
+  disclaimer: string;
+}
+
+export interface StoryActivityResponse {
+  bookTitle: string;
+  suggestion: StoryActivitySuggestion;
+  provenance: StoryActivityProvenance;
+}
+
 export const DISCLAIMER = "Observational play suggestion only. Not developmental assessment.";
 export const GUIDANCE = "You know your child best. Change it as you like, and stay close while you play.";
