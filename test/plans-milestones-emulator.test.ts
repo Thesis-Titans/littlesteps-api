@@ -106,4 +106,36 @@ describe("plans and milestones against the Firestore emulator", () => {
     expect(filteredId.body).toHaveLength(1);
     expect(filteredId.body[0].milestoneId).toBe("ms-2");
   });
+
+  it("creates, reads, updates, and deletes private journal entries against the Firestore emulator", async () => {
+    const { auth, base } = await setup();
+    const created = await request(app)
+      .post(`${base}/journal`)
+      .set(auth)
+      .send({ entryDate: "2026-11-05", content: "Emulator test journal note" });
+    expect(created.status).toBe(201);
+    const entryId = created.body.id as string;
+    expect(created.body.content).toBe("Emulator test journal note");
+
+    const fetched = await request(app).get(`${base}/journal/${entryId}`).set(auth);
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.content).toBe("Emulator test journal note");
+
+    const patched = await request(app)
+      .patch(`${base}/journal/${entryId}`)
+      .set(auth)
+      .send({ content: "Updated emulator journal note" });
+    expect(patched.status).toBe(200);
+    expect(patched.body.content).toBe("Updated emulator journal note");
+
+    const list = await request(app).get(`${base}/journal`).set(auth);
+    expect(list.status).toBe(200);
+    expect(list.body).toHaveLength(1);
+
+    const deleted = await request(app).delete(`${base}/journal/${entryId}`).set(auth);
+    expect(deleted.status).toBe(204);
+
+    const check = await request(app).get(`${base}/journal/${entryId}`).set(auth);
+    expect(check.status).toBe(404);
+  });
 });

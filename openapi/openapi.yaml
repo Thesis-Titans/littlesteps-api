@@ -1119,6 +1119,163 @@ paths:
           $ref: '#/components/responses/UnprocessableObservationDate'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/journal:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: listChildJournalEntries
+      summary: List private observation journal entries for an owned child
+      description: >-
+        Returns private observation journal entries recorded by the authenticated caregiver
+        for the specified child, ordered chronologically.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Optional calendar date filter formatted as YYYY-MM-DD.
+          schema:
+            type: string
+            format: date
+            pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+      responses:
+        '200':
+          description: List of private journal entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntry'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+    post:
+      operationId: createChildJournalEntry
+      summary: Create a private observation journal entry
+      description: >-
+        Records a confidential qualitative observation for an owned child.
+        Content is strictly excluded from AI prompts and telemetry per NFR-PRIV-02.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJournalEntry'
+      responses:
+        '201':
+          description: Created private journal entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/journal/{entryId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+      - name: entryId
+        in: path
+        required: true
+        description: Server-generated journal entry UUIDv4.
+        schema:
+          $ref: '#/components/schemas/JournalEntryId'
+    get:
+      operationId: getChildJournalEntry
+      summary: Retrieve a single private journal entry
+      description: >-
+        Returns a specific private journal entry owned by the authenticated caregiver.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Requested journal entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+    patch:
+      operationId: updateChildJournalEntry
+      summary: Update a private observation journal entry
+      description: >-
+        Updates content, entryDate, or linked milestone/activity references for an existing entry.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJournalEntry'
+      responses:
+        '200':
+          description: Updated journal entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      operationId: deleteChildJournalEntry
+      summary: Permanently delete a private observation journal entry
+      description: >-
+        Permanently removes a confidential qualitative observation entry.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Journal entry permanently deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
   /api/v1/children/{childId}/summary/weekly:
     parameters:
       - name: childId
@@ -1842,6 +1999,53 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    JournalEntryId:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+
+    CreateJournalEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - entryDate
+        - content
+      properties:
+        entryDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        linkedMilestoneId:
+          $ref: '#/components/schemas/MilestoneId'
+        linkedActivityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
+
+    UpdateJournalEntry:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        entryDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        linkedMilestoneId:
+          $ref: '#/components/schemas/MilestoneId'
+        linkedActivityId:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9-]+$'
 
     JournalEntry:
       type: object
