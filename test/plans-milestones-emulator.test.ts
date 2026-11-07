@@ -106,5 +106,4 @@ describe("plans and milestones against the Firestore emulator", () => {
     expect(filteredId.body).toHaveLength(1);
     expect(filteredId.body[0].milestoneId).toBe("ms-2");
   });
-  });
 });
