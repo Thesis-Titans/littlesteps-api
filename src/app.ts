@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
+import { accountRouter } from "./account/account-router.js";
 import { aiRateLimit, parseTrustProxyHops } from "./ai/rate-limit.js";
 import { aiRouter } from "./ai/ai-router.js";
 import { activitiesRouter } from "./activities/activities-router.js";
@@ -55,10 +56,7 @@ app.use("/api/v1/children", requireFirebaseUser, childrenRouter);
 
 app.use("/api/v1/ai", requireFirebaseUser, aiRateLimit, aiRouter);
 
-app.get("/api/v1/me", requireFirebaseUser, (request, response) => {
-  response.setHeader("Cache-Control", "no-store");
-  response.status(200).json({ uid: request.firebaseUser!.uid });
-});
+app.use("/api/v1/me", requireFirebaseUser, accountRouter);
 
 app.use((_request, response) => {
   response.status(404).json({ error: { code: "RESOURCE_NOT_FOUND", message: "Resource not found" } });

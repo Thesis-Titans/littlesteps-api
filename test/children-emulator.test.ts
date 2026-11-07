@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { app } from "../src/app.js";
 import { createFirestoreRateLimiter } from "../src/ai/rate-limit.js";
@@ -68,6 +69,124 @@ describe("children API against the Auth and Firestore emulators", () => {
     const patch = await request(app).patch(`/api/v1/children/${child.id}`).set(authA).send({ nickname: "Hijack" });
     expect(patch.status).toBe(404);
     expect((await request(app).get(`/api/v1/children/${child.id}`).set(authB)).body.nickname).toBe("Theirs");
+  });
+
+  it("exports only the signed-in caregiver's data and deletes a child with all child-scoped documents (#17)", async () => {
+    const a = await signUp();
+    const b = await signUp();
+    const authA = { Authorization: `Bearer ${a.idToken}` };
+    const authB = { Authorization: `Bearer ${b.idToken}` };
+    const db = getFirestore();
+
+    const childA = (await request(app).post("/api/v1/children").set(authA).send({ nickname: "Sprout A", ageBand: "12-23m" })).body;
+    const childB = (await request(app).post("/api/v1/children").set(authB).send({ nickname: "Sprout B", ageBand: "24-35m" })).body;
+
+    const planA = await request(app)
+      .post(`/api/v1/children/${childA.id}/plans`)
+      .set(authA)
+      .send({ activityId: "act-1", scheduledDate: "2026-11-05", feedbackNote: "Enjoyed stacking" });
+    expect(planA.status).toBe(201);
+
+    const obsA = await request(app)
+      .post(`/api/v1/children/${childA.id}/milestones`)
+      .set(authA)
+      .send({ milestoneId: "ms-1", status: "observed", notes: "Stood up" });
+    expect(obsA.status).toBe(201);
+
+    const childARef = db.collection("caregivers").doc(a.localId).collection("children").doc(childA.id);
+    const now = new Date().toISOString();
+    await childARef.collection("journal_entries").doc("77777777-7777-4777-8777-777777777777").set({
+      id: "77777777-7777-4777-8777-777777777777",
+      childId: childA.id,
+      caregiverId: a.localId,
+      entryDate: "2026-11-05",
+      content: "Quiet afternoon play",
+      createdAt: now,
+      updatedAt: now
+    });
+    await childARef.collection("weekly_summaries").doc("2026-W45").set({
+      id: "2026-W45",
+      weekStartDate: "2026-11-02",
+      weekEndDate: "2026-11-08",
+      completedActivityCount: 1,
+      observedMilestoneCount: 1,
+      generatedAt: now
+    });
+
+    const exported = await request(app).get("/api/v1/me/export").set(authA);
+    expect(exported.status).toBe(200);
+    expect(exported.body.profile.uid).toBe(a.localId);
+    expect(exported.body.children).toEqual([childA]);
+    expect(exported.body.plans).toHaveLength(1);
+    expect(exported.body.observations).toHaveLength(1);
+    expect(exported.body.journalEntries).toHaveLength(1);
+    expect(JSON.stringify(exported.body)).not.toContain(b.localId);
+    expect(JSON.stringify(exported.body)).not.toContain("Sprout B");
+
+    const crossExport = await request(app).get(`/api/v1/me/export?uid=${b.localId}`).set(authA);
+    expect(crossExport.status).toBe(404);
+
+    // Cross-owner delete attempt fails with 404 and leaves childA intact
+    const crossDelete = await request(app).delete(`/api/v1/children/${childA.id}`).set(authB);
+    expect(crossDelete.status).toBe(404);
+    expect((await childARef.get()).exists).toBe(true);
+
+    // Owner delete removes childA and all child-scoped subcollections
+    const del = await request(app).delete(`/api/v1/children/${childA.id}`).set(authA);
+    expect(del.status).toBe(204);
+    expect((await childARef.get()).exists).toBe(false);
+    expect((await childARef.collection("plans").get()).empty).toBe(true);
+    expect((await childARef.collection("milestone_observations").get()).empty).toBe(true);
+    expect((await childARef.collection("journal_entries").get()).empty).toBe(true);
+    expect((await childARef.collection("weekly_summaries").get()).empty).toBe(true);
+
+    // Caregiver B's child still exists
+    expect((await request(app).get(`/api/v1/children/${childB.id}`).set(authB)).status).toBe(200);
+  });
+
+  it("deletes the whole account including all children, subcollections, caregiver doc, and Firebase Auth user (#17)", async () => {
+    const a = await signUp();
+    const b = await signUp();
+    const authA = { Authorization: `Bearer ${a.idToken}` };
+    const authB = { Authorization: `Bearer ${b.idToken}` };
+    const db = getFirestore();
+
+    await db.collection("caregivers").doc(a.localId).set({
+      uid: a.localId,
+      email: "a@example.test",
+      displayName: "Caregiver A",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    const child1 = (await request(app).post("/api/v1/children").set(authA).send({ nickname: "First", ageBand: "0-5m" })).body;
+    const child2 = (await request(app).post("/api/v1/children").set(authA).send({ nickname: "Second", ageBand: "12-23m" })).body;
+    const childB = (await request(app).post("/api/v1/children").set(authB).send({ nickname: "Other", ageBand: "24-35m" })).body;
+
+    await request(app)
+      .post(`/api/v1/children/${child1.id}/plans`)
+      .set(authA)
+      .send({ activityId: "act-1", scheduledDate: "2026-11-05" });
+    await request(app)
+      .post(`/api/v1/children/${child2.id}/milestones`)
+      .set(authA)
+      .send({ milestoneId: "ms-1", status: "observed" });
+
+    const res = await request(app).delete("/api/v1/me").set(authA);
+    expect(res.status).toBe(204);
+
+    const caregiverRef = db.collection("caregivers").doc(a.localId);
+    expect((await caregiverRef.get()).exists).toBe(false);
+    expect((await caregiverRef.collection("children").get()).empty).toBe(true);
+    expect((await caregiverRef.collection("children").doc(child1.id).collection("plans").get()).empty).toBe(true);
+    expect((await caregiverRef.collection("children").doc(child2.id).collection("milestone_observations").get()).empty).toBe(true);
+
+    // Firebase Auth user is deleted in the Auth Emulator
+    await expect(getAuth().getUser(a.localId)).rejects.toThrow();
+
+    // Caregiver B's account and child remain untouched
+    expect((await getAuth().getUser(b.localId)).uid).toBe(b.localId);
+    expect((await request(app).get(`/api/v1/children/${childB.id}`).set(authB)).status).toBe(200);
   });
 
   it("keeps both fields when two PATCHes run concurrently", async () => {
