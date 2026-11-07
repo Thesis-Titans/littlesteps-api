@@ -90,3 +90,32 @@ export const BooksQuerySchema = z.object({
   ).default(12)
 });
 export type BooksQuery = z.infer<typeof BooksQuerySchema>;
+
+export const WeatherQuerySchema = z.object({
+  latitude: z.preprocess(
+    (value) => (value !== undefined ? Number(value) : 10.72),
+    z.number().min(-90).max(90)
+  ).default(10.72),
+  longitude: z.preprocess(
+    (value) => (value !== undefined ? Number(value) : 122.56),
+    z.number().min(-180).max(180)
+  ).default(122.56)
+});
+export type WeatherQuery = z.infer<typeof WeatherQuerySchema>;
+
+export const WeatherProvenanceSchema = z.object({
+  source: z.literal("Open-Meteo"),
+  attribution: z.literal("Weather data by Open-Meteo.com"),
+  license: z.literal("CC BY 4.0")
+});
+export type WeatherProvenance = z.infer<typeof WeatherProvenanceSchema>;
+
+export const WeatherResponseSchema = z.object({
+  condition: z.string(),
+  rainChance: z.number().int().min(0).max(100),
+  heatFlag: z.boolean(),
+  suggestedSetting: SettingSchema,
+  hint: z.string().nullable(),
+  provenance: WeatherProvenanceSchema
+});
+export type WeatherResponse = z.infer<typeof WeatherResponseSchema>;

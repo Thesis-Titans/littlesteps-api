@@ -279,6 +279,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/catalog/weather:
+    get:
+      operationId: getWeatherHint
+      summary: Coarse weather hint for indoor/outdoor activity setting
+      description: |
+        Weather hint (ADR-009, FR-02/FR-06) powered by Open-Meteo. Calls Open-Meteo with fixed,
+        rounded coordinates (defaulting to Iloilo City: 10.72, 122.56). Never transmits device GPS,
+        caregiver, or child data. Responses are cached for 1 hour. On timeout (>3s) or upstream
+        failure, returns a neutral fallback (condition: unavailable, setting: either, hint: null).
+      x-implementation-status: implemented
+      parameters:
+        - name: latitude
+          in: query
+          required: false
+          description: Latitude rounded to 2 decimal places (-90 to 90, default 10.72 for Iloilo City)
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+            default: 10.72
+        - name: longitude
+          in: query
+          required: false
+          description: Longitude rounded to 2 decimal places (-180 to 180, default 122.56 for Iloilo City)
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+            default: 122.56
+      responses:
+        '200':
+          description: Weather hint with Open-Meteo provenance
+          headers:
+            Cache-Control:
+              description: Cache directive (public 1 hour for fresh forecast, 60s for fallback)
+              schema:
+                type: string
+            X-Cache:
+              description: Whether the response was served from in-memory cache
+              schema:
+                type: string
+                enum: [HIT, MISS]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeatherResponse'
+        '400':
+          description: Invalid coordinates query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/ai/recommendations:
     post:
       operationId: createAiRecommendations
@@ -1568,6 +1620,45 @@ components:
             license:
               type: string
               example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights"
+
+    WeatherResponse:
+      type: object
+      additionalProperties: false
+      required: [condition, rainChance, heatFlag, suggestedSetting, hint, provenance]
+      properties:
+        condition:
+          type: string
+          example: cloudy
+        rainChance:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 10
+        heatFlag:
+          type: boolean
+          example: false
+        suggestedSetting:
+          $ref: '#/components/schemas/Setting'
+        hint:
+          type: [string, 'null']
+          example: Good weather for outdoor play · Outdoor ideas
+        provenance:
+          $ref: '#/components/schemas/WeatherProvenance'
+
+    WeatherProvenance:
+      type: object
+      additionalProperties: false
+      required: [source, attribution, license]
+      properties:
+        source:
+          type: string
+          example: Open-Meteo
+        attribution:
+          type: string
+          example: Weather data by Open-Meteo.com
+        license:
+          type: string
+          example: CC BY 4.0
 
     PlanId:
       type: string
