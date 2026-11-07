@@ -104,7 +104,7 @@ at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs
 for field mappings, synthetic examples, review gates (age rules, field mapping and HTTP details decided; deletion and retention open) and privacy
 decisions. Run `npm run test:emulator` to exercise them against the Auth and Firestore emulators.
 
-Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract.
+Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract. See the [M5 Pre-Deployment Security, Authorization Regression, and Environment Readiness Review](docs/pre-deployment-security-audit.md) for the full cross-feature authorization matrix, error envelope audit, and Firebase billing/environment checklist.
 
 Still to do:
 - Retention review before real deployment (D6).
