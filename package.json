@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "emulators": "firebase emulators:start --only functions,auth,firestore",
     "mock": "npx @stoplightio/prism-cli mock openapi/openapi.yaml -p 4010 --cors",
-    "mock:proxy": "npx @stoplightio/prism-cli proxy openapi/openapi.yaml http://localhost:5001/littlesteps/us-central1/api -p 4020",
+    "mock:proxy": "npx @stoplightio/prism-cli proxy openapi/openapi.yaml http://localhost:5001/demo-littlesteps/asia-southeast1/api -p 4020",
     "pack:api": "npx repomix --config ../repomix.config.json --include \"src/**,openapi/**\" -o repomix-api.xml"
   },
   "dependencies": {

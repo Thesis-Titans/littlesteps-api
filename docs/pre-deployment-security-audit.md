@@ -32,6 +32,7 @@ All child-scoped endpoints verify child ownership (`child.caregiverId === verifi
 | `GET /api/v1/catalog/activities` | Public | Approved / opt-in fixture catalog only | `200 OK` | N/A | N/A |
 | `GET /api/v1/catalog/activities/:id` | Public | Approved / opt-in fixture catalog only | `200 OK` / `404` | N/A | N/A |
 | `GET /api/v1/catalog/books` | Public | Allowlisted subjects & bounded query | `200 OK` / `400` | N/A | N/A |
+| `GET /api/v1/catalog/weather` | Public | Bounded coordinate queries & Open-Meteo cache | `200 OK` / `400` | N/A | N/A |
 | `GET /api/v1/me` | Bearer token | `request.firebaseUser.uid` only (ignores query/body `uid`) | `401 UNAUTHENTICATED` | Caller's own UID only | Ignored |
 | `GET /api/v1/me/export` | Bearer token | Exports only `caregivers/{uid}` and children where `caregiverId === uid` | `401 UNAUTHENTICATED` | Foreign records excluded | N/A |
 | `DELETE /api/v1/me` | Bearer token | Deletes only `caregivers/{uid}`, owned children/subcollections, and Auth user `uid` | `401 UNAUTHENTICATED` | Foreign records untouched | N/A |
@@ -44,10 +45,17 @@ All child-scoped endpoints verify child ownership (`child.caregiverId === verifi
 | `POST /api/v1/children/:childId/plans` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
 | `PATCH /api/v1/children/:childId/plans/:planId` | Bearer token | Verifies parent child + plan `caregiverId === uid` and `childId` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
 | `DELETE /api/v1/children/:childId/plans/:planId` | Bearer token | Verifies parent child + plan `caregiverId === uid` and `childId` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
+| `GET /api/v1/children/:childId/journal` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
+| `POST /api/v1/children/:childId/journal` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
+| `GET /api/v1/children/:childId/journal/:entryId` | Bearer token | Verifies parent child + entry `caregiverId === uid` and `childId` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
+| `PATCH /api/v1/children/:childId/journal/:entryId` | Bearer token | Verifies parent child + entry `caregiverId === uid` and `childId` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
+| `DELETE /api/v1/children/:childId/journal/:entryId` | Bearer token | Verifies parent child + entry `caregiverId === uid` and `childId` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
 | `GET /api/v1/children/:childId/milestones` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
 | `POST /api/v1/children/:childId/milestones` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
 | `PATCH /api/v1/children/:childId/milestones/:milestoneId` | Bearer token | Verifies parent child + milestone `caregiverId === uid` | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | `400 INVALID_INPUT` (`.strict()`) |
+| `GET /api/v1/children/:childId/summary/weekly` | Bearer token | Verifies parent child ownership (`caregiverId === uid`) first | `401 UNAUTHENTICATED` | `404 RESOURCE_NOT_FOUND` | N/A |
 | `POST /api/v1/ai/recommendations` | Bearer token | Per-UID (`10/hr`) & per-IP (`30/hr`) rate limit; zero child/caregiver PII accepted | `401 UNAUTHENTICATED` | N/A | `400 INVALID_INPUT` (`.strict()`) |
+| `POST /api/v1/ai/story-activity` | Bearer token | 3-tier fallback engine; zero child/caregiver PII accepted | `401 UNAUTHENTICATED` | N/A | `400 INVALID_INPUT` (`.strict()`) |
 
 ---
 

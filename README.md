@@ -85,7 +85,7 @@ All authenticated routes require a Firebase ID token sent in the `Authorization:
 - `GET /api/v1/catalog/activities` — Age-aware activity catalog (`Cache-Control: public, max-age=3600`).
 - `GET /api/v1/catalog/activities/{id}` — Single catalog activity details.
 - `GET /api/v1/catalog/books` — Open Library picture books proxy with bounded subject validation, local cache (`X-Cache`), and offline fallback.
-- `GET /api/v1/catalog/weather-hint` — Weather-adaptive play recommendations based on local climate conditions.
+- `GET /api/v1/catalog/weather` — Weather-adaptive play recommendations based on local climate conditions.
 
 ### Child profile management (FR-01)
 - `GET /api/v1/children` — List children registered to the authenticated caregiver.
@@ -110,7 +110,7 @@ All authenticated routes require a Firebase ID token sent in the `Authorization:
 ### Milestone observation tracking (FR-04)
 - `GET /api/v1/children/{childId}/milestones` — List developmental milestone observations for a child.
 - `POST /api/v1/children/{childId}/milestones` — Record milestone observation status (`observed`, `emerging`, `not_yet`).
-- `DELETE /api/v1/children/{childId}/milestones/{milestoneRecordId}` — Delete milestone observation record.
+- `PATCH /api/v1/children/{childId}/milestones/{milestoneId}` — Update milestone observation status, observed date, or notes.
 
 ### Weekly reflection summary (FR-05)
 - `GET /api/v1/children/{childId}/summary/weekly` — Aggregate completed plans and milestone observations over a 7-day window.
