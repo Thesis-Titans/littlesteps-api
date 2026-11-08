@@ -1,74 +1,103 @@
 # Contributing to LittleSteps API
 
-This repository contains the Node.js + TypeScript backend services for LittleSteps, implemented with Express and hosted on Firebase Cloud Functions (2nd gen).
+This repository contains the backend REST services for LittleSteps, implemented with Node.js and TypeScript on Express and hosted on Firebase Cloud Functions (2nd gen).
 
-For general project governance, three-tier architecture, code of conduct, and shared standards, refer to the [canonical Contributing Guidelines in `littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/CONTRIBUTING.md).
-
----
-
-## 1. Prerequisites
-
-- **Node.js 22 LTS**
-- **npm 10+**
-- **Java 21** (required by the Firebase Emulator Suite)
-- **Firebase CLI** (`npm install -g firebase-tools` or via npx)
-
-Follow the full reproducible setup guide in the [Developer Onboarding Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/getting-started.md).
+For overall project governance, three-tier architecture, code of conduct, and shared standards, refer to the [canonical Contributing Guidelines in `littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/CONTRIBUTING.md).
 
 ---
 
-## 2. Local Verification Commands
+## Prerequisites and environment
 
-Run the full local verification suite before committing or opening a pull request:
+- **Node.js:** 22 LTS
+- **npm:** 10+
+- **Java JDK:** 21 LTS (required by the Firebase Emulator Suite)
+- **Firebase CLI:** 14+ (`npm install -g firebase-tools` or run via `npx`)
+
+Follow the reproducible full-stack setup guide in the [Developer Onboarding Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/getting-started.md).
+
+---
+
+## Local verification commands
+
+Execute the full verification suite locally before creating a pull request:
 
 ```bash
 # 1. Install exact dependencies from lockfile
 npm ci
 
-# 2. Run ESLint
+# 2. Run ESLint code quality checks
 npm run lint
 
-# 3. Typecheck TypeScript sources
+# 3. Typecheck TypeScript sources without emitting files
 npm run typecheck
 
-# 4. Build output bundle
+# 4. Compile TypeScript bundle
 npm run build
 
-# 5. Run fast unit test baseline
+# 5. Run unit and route test suites
 npm test
 
-# 6. Run Auth Emulator integration suite
+# 6. Run Auth and Firestore Emulator integration suite
 npm run test:emulator
 ```
 
----
-
-## 3. Pull Request & CI Expectations
-
-- **Branching:** Work on focused topic branches (`feat/`, `fix/`, `docs/`, `chore/`). Never push directly to `main`.
-- **Required CI Check:** The GitHub Actions workflow enforces **`API CI/verify`**, which executes linting, typechecking, building, unit tests, and emulator integration tests.
-- **Review Governance:** In the active feature execution phase, every pull request requires review and approval from at least one teammate. Pull requests modifying data contracts, authentication, security rules, or AI prompts/fallbacks require an additional review from Mark.
+All lint errors, typecheck warnings, and failing tests must be resolved before requesting review.
 
 ---
 
-## 4. API-Specific Technical Rules
+## Pull request and branching workflow
 
-### 4.1 Synthetic Data & In-Memory Emulators
-- **No Real Data:** Never test against real production user accounts, child records, or cloud credentials.
-- **Emulator Isolation:** Test suites (such as `test/auth-emulator.test.ts`) use mock keys (`fake-api-key`) and local test passwords (`LocalTestPassword123!`). These values are strictly synthetic inputs for the ephemeral in-memory Firebase Auth Emulator and must never be used in deployed environments.
+- **Branch naming:** Create focused topic branches off an up-to-date `main`:
+  - `feat/<feature-name>`: New routes, stores, or service features.
+  - `fix/<bug-description>`: Bug fixes or security patches.
+  - `docs/<topic>`: Documentation, contracts, or OpenAPI specification updates.
+  - `chore/<task>`: Tooling updates, dependency bumps, or script improvements.
+- **Pull request requirements:** All changes merge into `main` via pull requests. Direct pushes to `main` are disabled.
+- **Required CI checks:** Every pull request must pass the automated GitHub Actions **`API CI/verify`** workflow (lint, typecheck, build, unit tests, and emulator integration tests).
+- **Peer review:** Every pull request requires review from at least one teammate. Pull requests modifying data schemas, authentication middleware, security rules, or AI prompt logic require an additional review from Mark.
+- **Individual commits:** Each team member must author and commit from their own Git identity to maintain individual contribution records for academic evaluation.
 
-### 4.2 Server-Side Authorization
-- Never trust a client-supplied UID in request bodies or query parameters.
-- Authenticated endpoints must verify the Firebase ID token using the Firebase Admin SDK and derive identity solely from the verified token UID.
-- Child-scoped endpoints must verify server-side that the authenticated UID is authorized to access the requested child record.
+---
 
-### 4.3 OpenAPI Contract Synchronization
+## Technical standards and rules
+
+### Synthetic data and emulator isolation
+- **No real data:** Never test against real user accounts, real child information, or production credentials.
+- **Emulator isolation:** Integration tests run against the local Firebase Emulator Suite (`demo-littlesteps`). Test fixtures and tokens are synthetic throwaways.
+
+### Server-side authorization and BOLA prevention
+- Never trust client-supplied UIDs in request bodies or query parameters.
+- Verify Firebase ID tokens server-side using the Firebase Admin SDK and derive identity solely from `req.user.uid`.
+- Verify server-side ownership before returning, updating, or deleting any child-scoped record. Return `404 RESOURCE_NOT_FOUND` on ownership mismatches to prevent account enumeration.
+
+### OpenAPI specification synchronization
 - The API repository maintains the technical contract at [`openapi/openapi.yaml`](openapi/openapi.yaml).
-- Any endpoint modification, parameter change, error status change, or schema addition must include a corresponding update to `openapi/openapi.yaml` in the same pull request.
+- Any route modification, request/response schema change, parameter addition, or error code update must include the matching update to `openapi/openapi.yaml` in the same pull request.
+
+### Error response consistency
+All routes must return standardized error JSON envelopes matching the API specification:
+
+```json
+{
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "Human-readable error explanation."
+  }
+}
+```
+
+Standard error codes: `RESOURCE_NOT_FOUND`, `INVALID_INPUT`, `UNAUTHENTICATED`, `UNPROCESSABLE_ENTITY`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
 
 ---
 
-## 5. Security & Rights
+## Security, privacy, and credentials
 
-- **Vulnerability Reporting:** Never report vulnerabilities in public issues. Follow [`SECURITY.md`](SECURITY.md) or the canonical [Security Policy in `littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/SECURITY.md).
-- **Rights Policy:** The project's intended rights policy is **All Rights Reserved (Academic Evaluation Only)**. Public visibility does not grant an open-source redistribution license.
+- **Credential isolation:** Never commit service account credentials, cloud keys, or `.env` files.
+- **Data minimization:** Never include child names, dates of birth, or private journal entries in AI prompts or server logs.
+- **Vulnerability reporting:** Report any security vulnerabilities following [`SECURITY.md`](SECURITY.md).
+
+---
+
+## Rights policy
+
+All Rights Reserved (Academic Evaluation Only). Public repository visibility does not grant an open-source redistribution license.

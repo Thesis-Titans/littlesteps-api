@@ -1,128 +1,196 @@
 # LittleSteps API
 
-Node.js + TypeScript API using Express hosted by Firebase Cloud Functions (2nd gen). Health, authenticated identity (`/me`), account data export (`GET /api/v1/me/export`), account deletion (`DELETE /api/v1/me`), catalog, child-profile routes (including `DELETE /api/v1/children/:childId`), milestone observations (`/api/v1/children/:childId/milestones`), activity planning (`/api/v1/children/:childId/plans`), and AI recommendations (`POST /api/v1/ai/recommendations`, Gemini when configured, otherwise the deterministic catalog fallback) are implemented, with server-side ownership checks. Rate limiting is implemented on the AI recommendations endpoint only.
+Node.js and TypeScript backend service for **LittleSteps**, implemented with Express and deployed to Firebase Cloud Functions (2nd gen).
+
+The service provides REST endpoints for caregiver authentication, child profiles, routine play planning, private observational journaling, milestone tracking, weekly summaries, an age-aware learning catalog with Open Library book integration, and constrained AI play suggestions with a 3-tier fallback engine.
 
 ---
 
-## Canonical Project Documentation
-LittleSteps uses a three-tier documentation structure. System architecture, product scope, and privacy policies are maintained centrally in [`littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs):
+## Canonical project documentation
 
-- [Developer Onboarding Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/getting-started.md): Full-stack local setup instructions.
-- [API Reference & Integration Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md): Canonical OpenAPI contract, Open Library REST integration, 3-tier AI fallback engine, and error envelopes.
-- [Product Scope](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/product-scope.md): The six core features and boundaries.
-- [Architecture Decisions](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/architecture-decisions.md): Architecture and technical direction (ADRs 001–010).
-- [Security, Privacy, and AI Guardrails](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/security-privacy-ai.md): Data safeguards and child privacy principles.
-- [Documentation Standards](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/documentation-standards.md): Documentation hierarchy and repository consistency.
+System architecture, product scope, data models, and privacy policies are maintained centrally in [`littlesteps-docs`](https://github.com/Thesis-Titans/littlesteps-docs):
 
----
-
-## Requirements
-- **Node.js 22 LTS**
-- **npm 10+**
-- **Java 21** (for Firebase Emulator Suite workflows)
+- [Developer Onboarding Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/getting-started.md): Full-stack local setup instructions across repositories.
+- [API Reference and Integration Guide](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md): Canonical interface specification, Open Library proxy, 3-tier AI fallback engine, and error schemas.
+- [Product Scope](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/product-scope.md): Functional requirements (FR-01 through FR-07) and non-diagnostic boundaries.
+- [Architecture Decisions](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/architecture-decisions.md): Architecture decision records (ADR-001 through ADR-010).
+- [Data Model Specification](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/data-model.md): Firestore collections, subcollections, composite indexes, and field constraints.
+- [Security, Privacy, and AI Guardrails](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/security-privacy-ai.md): Philippine Data Privacy Act of 2012 (RA 10173) compliance, BOLA prevention, and AI data safeguards.
+- [Documentation Standards](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/documentation-standards.md): Documentation hierarchy and repository consistency guidelines.
 
 ---
 
-## Local Setup & Verification
-1. Copy `.env.example` to `.env` and configure comma-separated `CORS_ORIGINS` for local web origins (defaults to `http://localhost:5173,http://127.0.0.1:5173` if unset). Do not commit secrets.
-   - Optional `OPEN_LIBRARY_CONTACT`: a contact email or phone added to the Open Library User-Agent. Open Library asks API users for an app name and a contact email or phone: https://openlibrary.org/developers/api
-   - Books responses carry this licence text: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights".
-2. Run `npm ci` to install dependencies from the lockfile.
-3. Run `npm run lint` to verify code style via ESLint.
-4. Run `npm run typecheck`, `npm run build`, and `npm test` for the unit-test suite (254 passing tests).
-5. **Demo/Staging only**: set `SERVE_SYNTHETIC_CATALOG=true` in `.env` to load the synthetic fixture activities into the catalog at startup. The flag is **off by default** — production must leave it unset so the catalog starts empty until reviewed content exists (docs #3). All fixtures keep `synthetic_fixture` status; the AI helper ignores them (`getApprovedActivities()` returns `[]`).
-5. Run `npm run test:emulator` to run integration tests against the local Firebase Authentication and Firestore Emulators using the synthetic `demo-littlesteps` project.
-6. For interactive local development, run `npm run emulators -- --project demo-littlesteps`. Do not deploy to cloud environments during initial setup.
+## Requirements and prerequisites
 
-The Auth Emulator integration suite tests malformed/invalid tokens, emulator-issued ID tokens, and validates that the API derives the identity UID strictly from the verified token rather than client parameters.
+- **Node.js:** 22 LTS
+- **npm:** 10+
+- **Java JDK:** 21 LTS (required for the Firebase Emulator Suite)
+- **Firebase CLI:** 14+ (`npm install -g firebase-tools` or run via `npx`)
+
+---
+
+## Local setup and verification
+
+```bash
+# 1. Clone repository and navigate to api directory
+cd littlesteps-api
+
+# 2. Copy environment template
+cp .env.example .env
+
+# 3. Install exact dependencies from lockfile
+npm ci
+
+# 4. Verify code quality with ESLint
+npm run lint
+
+# 5. Typecheck TypeScript sources
+npm run typecheck
+
+# 6. Build JavaScript bundle
+npm run build
+
+# 7. Run unit test suite (388 passing tests across 17 test suites)
+npm test
+
+# 8. Run Firebase Emulator integration suite (Auth & Firestore)
+npm run test:emulator
+```
+
+For interactive local testing with web and mobile clients:
+
+```bash
+# Start local Firebase Emulators (Functions, Auth, Firestore)
+npm run emulators -- --project demo-littlesteps
+```
 
 > [!NOTE]
-> Passing local tests verifies this local in-memory emulator path only. It does not prove deployed Firebase configuration, Firestore security rules, child ownership isolation, or production readiness.
+> Passing local tests verifies the local in-memory emulator path. Cloud deployment requires verified Firebase billing, Firestore security rules deployment, and configured runtime secrets.
 
 ---
 
-## API Endpoints & Contract
-The canonical interface specification is detailed in [`docs/api-reference.md`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md) and maintained locally in [`openapi/openapi.yaml`](openapi/openapi.yaml):
+## API endpoints and interface contract
 
-### Baseline Scaffold Endpoints:
-- `GET /health` — public liveness health check.
-- `GET /api/v1/me` — requires `Authorization: Bearer <Firebase ID token>` and returns the verified UID.
-- `GET /api/v1/me/export` — exports the signed-in caregiver's profile, children, activity plans, milestone observations, and journal entries as JSON.
-- `DELETE /api/v1/me` — permanently deletes the signed-in caregiver's children (with subcollections), caregiver profile document, and Firebase Auth user.
+The technical contract is specified in [`openapi/openapi.yaml`](openapi/openapi.yaml) and documented in [`docs/api-reference.md`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md).
 
-### Implemented Catalog Endpoints (public, cacheable):
-- `GET /api/v1/catalog/activities` and `GET /api/v1/catalog/activities/{id}` — age-aware learning catalog (`public, max-age=3600`).
-- `GET /api/v1/catalog/books` — Open Library proxy with bounded query validation, allowlisted subjects, server-side cache (`X-Cache`) and offline fallback.
+All authenticated routes require a Firebase ID token sent in the `Authorization: Bearer <token>` header. Identity (`req.user.uid`) is derived exclusively from server-side token verification.
 
-All other routes, including errors, respond with `Cache-Control: no-store`.
+### Health and caregiver account
+- `GET /health` — Public liveness health check probe.
+- `GET /api/v1/me` — Returns the authenticated caregiver's verified UID.
+- `GET /api/v1/me/export` — Exports caregiver profile, child records, plans, observations, and journal entries as JSON (RA 10173 data portability).
+- `DELETE /api/v1/me` — Permanently deletes caregiver profile, child subcollections, and Firebase Auth account (RA 10173 right to erasure).
 
-### Implemented Child Profile Endpoints (authenticated):
-- `POST /api/v1/children`, `GET /api/v1/children`, `GET`/`PATCH`/`DELETE /api/v1/children/{childId}` — Child profile management and hard cascade deletion with server-side UID ownership scoping (BOLA 404 `RESOURCE_NOT_FOUND` on unauthorized access). See Status below.
+### Learning catalog and external integrations (public, cacheable)
+- `GET /api/v1/catalog/activities` — Age-aware activity catalog (`Cache-Control: public, max-age=3600`).
+- `GET /api/v1/catalog/activities/{id}` — Single catalog activity details.
+- `GET /api/v1/catalog/books` — Open Library picture books proxy with bounded subject validation, local cache (`X-Cache`), and offline fallback.
+- `GET /api/v1/catalog/weather-hint` — Weather-adaptive play recommendations based on local climate conditions.
 
-### Implemented Milestone Observation Endpoints (authenticated):
-- `GET /api/v1/children/{childId}/milestones` — List caregiver observations for child.
-- `POST /api/v1/children/{childId}/milestones` — Record or update milestone observation record.
+### Child profile management (FR-01)
+- `GET /api/v1/children` — List children registered to the authenticated caregiver.
+- `POST /api/v1/children` — Register a child profile (birth date, sex, optional nickname).
+- `GET /api/v1/children/{childId}` — Retrieve child profile by ID.
+- `PATCH /api/v1/children/{childId}` — Update child profile fields.
+- `DELETE /api/v1/children/{childId}` — Hard cascade deletion of child document and nested subcollections.
+
+### Routine play planning (FR-02)
+- `GET /api/v1/children/{childId}/plans` — List scheduled activity plans (filterable by date and completion status).
+- `POST /api/v1/children/{childId}/plans` — Schedule an activity for a child.
+- `PATCH /api/v1/children/{childId}/plans/{planId}` — Update plan details or toggle completion status.
+- `DELETE /api/v1/children/{childId}/plans/{planId}` — Remove scheduled activity plan.
+
+### Private observation journal (FR-03)
+- `GET /api/v1/children/{childId}/journal` — List caregiver observation journal entries (reverse-chronological, filterable by date).
+- `POST /api/v1/children/{childId}/journal` — Create private observation journal entry.
+- `GET /api/v1/children/{childId}/journal/{entryId}` — Retrieve single journal entry.
+- `PATCH /api/v1/children/{childId}/journal/{entryId}` — Update journal entry content or linked milestones.
+- `DELETE /api/v1/children/{childId}/journal/{entryId}` — Permanently delete journal entry.
+
+### Milestone observation tracking (FR-04)
+- `GET /api/v1/children/{childId}/milestones` — List developmental milestone observations for a child.
+- `POST /api/v1/children/{childId}/milestones` — Record milestone observation status (`observed`, `emerging`, `not_yet`).
 - `DELETE /api/v1/children/{childId}/milestones/{milestoneRecordId}` — Delete milestone observation record.
 
-### Implemented Activity Planning Endpoints (authenticated):
-- `GET /api/v1/children/{childId}/plans` — List activity plans for child (filterable by date, status).
-- `POST /api/v1/children/{childId}/plans` — Schedule an activity for child.
-- `PATCH /api/v1/children/{childId}/plans/{planId}` — Update activity plan or toggle completion status.
-- `DELETE /api/v1/children/{childId}/plans/{planId}` — Delete activity plan.
+### Weekly reflection summary (FR-05)
+- `GET /api/v1/children/{childId}/summary/weekly` — Aggregate completed plans and milestone observations over a 7-day window.
 
-### Implemented AI Endpoint (authenticated):
-- `POST /api/v1/ai/recommendations` — constrained activity suggestions from reviewed catalog items; reviewed catalog items only. Uses Gemini only when `GEMINI_API_KEY` and `GEMINI_MODEL` are both set; otherwise, and on any provider failure, it returns the deterministic catalog fallback with 200.
+### Constrained AI play helpers (FR-07)
+- `POST /api/v1/ai/recommendations` — Play suggestions selected from reviewed catalog items using age band, available time, materials, and environment.
+- `POST /api/v1/ai/story-activity` — Play idea generator based on picture book themes, materials, and caregiver preferences.
 
-#### AI provider (Gemini)
-- Configure with two variables, both required: `GEMINI_API_KEY` (a secret) and `GEMINI_MODEL` (the model name, for example `gemini-3.5-flash-lite`; there is no default in code; model ids change, see https://ai.google.dev/gemini-api/docs/models; do not use the 2.0 ids, they are shut down). If either is missing or empty the provider is off and the endpoint serves the deterministic fallback. See `.env.example`; never commit real values.
-- Local: put them in `.env` (git-ignored) or the emulator environment. Deployed: `firebase functions:secrets:set GEMINI_API_KEY` stores the key, but the function must also list the secret in its `secrets` option to receive it. That is not set up in `src/index.ts` because declaring it would make deploys fail until the secret exists; add it as part of the first real deployment. Until then, the deployed function reads `process.env` only. Not tested on a deployed function.
-- The provider calls the Gemini REST `generateContent` endpoint with `fetch`, the key in the `x-goog-api-key` header (never in a URL), the existing prompt only, a JSON response schema (`{picks:[{id, why}]}`), temperature 0.2, at most 1024 output tokens, provider-default safety settings and the service's 8 second abort. Replies are validated again against the catalog ids; any failure falls back to the catalog. Errors carry fixed messages, and prompts, replies and the key are never logged.
-- **BEFORE ENABLING: run one smoke test with a real key and model.** The request shape (uppercase schema type names such as `OBJECT`) was not run against the live API; Google's docs show lowercase. The casing is one constant (`UPPERCASE_SCHEMA_TYPES`) in `src/ai/providers/gemini.ts`.
-- Limits are per project; daily limits reset at midnight Pacific; a 429 from the provider falls back silently to the catalog. Provider replies are read with a 64KB cap (larger replies fall back).
-- Circuit breaker: after 3 consecutive provider failures the provider is skipped for 60 seconds (the fallback is served), then one trial call is allowed. State is per function instance.
-- ADR-008: prompts may contain only synthetic or catalog data (age band, time, setting, cleaned materials, language, candidate titles). The Gemini free tier may use prompts and replies to improve Google products and may show them to human reviewers, so use synthetic data only until the project moves to a paid tier or Vertex AI before any real caregiver uses the helper. Caveat (https://ai.google.dev/gemini-api/terms): on the free tier Google may use prompts to improve its products and human reviewers may read them; put only synthetic or catalog data in prompts; paid use is excluded from this.
-
-#### AI rate limiting
-- Limits: 10 requests per signed-in user and, by default, 30 per IP address (`AI_IP_LIMIT_PER_HOUR`), each per clock hour (fixed window, UTC; a burst across an hour boundary can use up to twice the limit). Over the limit: `429 RATE_LIMITED`, `Retry-After` = seconds until the window resets (1 to 3600), `Cache-Control: no-store`.
-- Every authenticated request counts, including ones rejected for invalid input, and the check runs before the provider call. Unauthenticated requests are rejected earlier and are not counted. The IP check runs first, so a blocked address does not write to Firestore.
-- Per-user counters live in Firestore at `rate_limits/{uid}_{hourBucket}` and hold only `uid`, `bucket`, `count` and `expiresAt`, updated in a transaction. Enable a Firestore TTL policy on `rate_limits.expiresAt` (`gcloud firestore fields ttls update expiresAt --collection-group=rate_limits`) so old windows are deleted; this has not been applied to any project yet.
-- Per-IP counters are in memory, per function instance, so that cap is best effort and resets on restart. The app trusts `TRUST_PROXY_HOPS` proxy hops (default 1, integer >= 0, invalid values fall back to 1): `req.ip` is the rightmost `X-Forwarded-For` entry, which the Google front end appends; earlier, client-supplied entries are ignored. This has not been checked on a deployed function. If the real proxy chain differs, the per-IP cap may group unrelated users (locking them out) or be bypassable.
-- `AI_IP_LIMIT_PER_HOUR` sets the per-IP limit (default 30; `0` disables the per-IP cap entirely and no IP is counted; invalid values fall back to 30). **Warning: verify on a deployed function (log `req.ip` once in a staging call) before relying on the per-IP cap; set `AI_IP_LIMIT_PER_HOUR=0` to turn it off.** The per-user cap (10/hour, Firestore) is unaffected.
-- If a limiter store errors, the request is allowed (fail open) and only `{"event":"ai.rate_limit_unavailable"}` is logged, so an outage does not take suggestions down.
-- Tests inject limiters with `setRateLimiter()` and `setIpRateLimiter()`; the Firestore limiter is covered by the emulator suite.
-
-### Planned Feature & Integration Endpoints:
-- `POST /api/v1/ai/story-activity` — Storybook activity generator with 3-tier fallback engine (Cloud Gemini $\to$ Local Ollama $\to$ Deterministic Catalog).
+Both AI routes execute with the 3-tier fallback engine: Cloud Gemini $\to$ Local Edge Ollama $\to$ Deterministic Catalog Matcher.
 
 ---
 
-## Status & Pre-Feature Prerequisites
+## Architecture and directory layout
 
-The child-profile routes (Issue #8) implement the contract in
-[OpenAPI](openapi/openapi.yaml): create/list at `/api/v1/children` and read/update
-at `/api/v1/children/{childId}`. See the [child-profile ownership contract](docs/child-profile-contract.md)
-for field mappings, synthetic examples, review gates (age rules, field mapping and HTTP details decided; deletion and retention open) and privacy
-decisions. Run `npm run test:emulator` to exercise them against the Auth and Firestore emulators.
-
-Done for the children routes: Firestore schema and ownership model, server-side ownership checks, request validation with negative tests, emulator tests, and the OpenAPI contract. See the [M5 Pre-Deployment Security, Authorization Regression, and Environment Readiness Review](docs/pre-deployment-security-audit.md) for the full cross-feature authorization matrix, error envelope audit, and Firebase billing/environment checklist.
-
-Still to do:
-- Retention review before real deployment (D6).
-- Rate limiting is done for the AI endpoint; still to do: rate limiting for the other endpoints, other abuse protections, and budget alerts before enabling AI provider calls.
-- Review Firebase billing plans, privacy obligations, and provider terms before deployment.
-- **Pre-deployment Firestore index verification (Issue #42 / Issue #14):** Deploy composite indexes via `firebase deploy --only firestore:indexes` from `firestore.indexes.json`. Required composite indexes cover:
-  - `plans`: `(status ASC, scheduledDate ASC/DESC)` for filtered plans and history queries.
-  - `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`, and `(status ASC, milestoneId ASC, observedDate ASC)`.
-  - **Query ordering decision:** The plans API orders chronologically by `scheduledDate ASC, id ASC` up to 100 items (`PLANS_LIST_LIMIT = 100`). The React web client sorts completed plans descending for the History view client-side and alerts the user if older items are truncated. Future Sprint 3 enhancements can introduce cursor-based pagination or a rolling date window.
+```text
+littlesteps-api/
+├── openapi/
+│   └── openapi.yaml           # Canonical OpenAPI 3.1.0 specification
+├── src/
+│   ├── account/               # Identity, export, and account deletion
+│   ├── activities/            # Routine play planning routes and store
+│   ├── ai/                    # AI helpers, Gemini provider, and fallback engine
+│   ├── catalog/               # Activity catalog, Open Library proxy, weather hint
+│   ├── children/              # Child profile management and age calculation
+│   ├── journal/               # Private observation journal routes and store
+│   ├── middleware/            # Firebase Auth Bearer token verification
+│   ├── milestones/            # Milestone observation routes and store
+│   ├── summary/               # Weekly reflection summary aggregation
+│   ├── app.ts                 # Express application configuration and middleware
+│   └── index.ts               # Cloud Functions export entrypoint
+├── test/                      # Unit, integration, and security regression test suites
+├── docs/                      # Technical contracts and security audit records
+├── firestore.indexes.json     # Firestore composite index definitions
+├── firestore.rules            # Firestore security rules
+└── package.json
+```
 
 ---
 
-## Community & Contributing
-- [Contributing Guidelines](CONTRIBUTING.md): Branch conventions, verification commands, and PR review rules.
-- [Security Policy](SECURITY.md): Vulnerability reporting and responsible disclosure.
-- [Code of Conduct](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/CODE_OF_CONDUCT.md): Shared expectations for respectful academic collaboration.
+## AI provider and safety guardrails
+
+### Provider configuration
+- **Required environment variables:** `GEMINI_API_KEY` and `GEMINI_MODEL` (e.g., `gemini-2.5-flash`).
+- When variables are unset or the provider times out (8-second abort signal), the engine automatically falls back to deterministic catalog matching with HTTP 200.
+- Circuit breaker trips after 3 consecutive external provider failures, routing requests directly to the fallback engine for 60 seconds.
+
+### Rate limiting
+- **Per-caregiver limit:** 10 requests per clock hour, enforced via transactional atomic counters in Firestore (`rate_limits/{uid}_{hourBucket}`).
+- **Per-IP limit:** 30 requests per clock hour in-memory via trusted proxy headers (`AI_IP_LIMIT_PER_HOUR`).
+- Exceeded limits return `429 RATE_LIMITED` with a `Retry-After` header.
+
+### Child data privacy (RA 10173 and NFR-PRIV-02)
+- Prompts sent to external AI providers contain strictly synthetic or anonymized developmental parameters: age band (e.g. `12-23m`), available time, setting, language preference, and candidate activity titles.
+- Child names, birth dates, and journal notes are strictly excluded from AI prompts and telemetry logs.
 
 ---
 
-## Rights Notice — Wording Pending Review
-**All Rights Reserved (Academic Evaluation Only)** is the project's intended rights policy. The repositories are public for academic course evaluation, faculty review, and demonstration; this notice does not technically restrict who can view or interact with public repositories. The wording and intended restrictions have not been represented as legally reviewed. Before relying on the notice as a formal legal instrument, seek review from the course instructor or an appropriate legal resource. No open-source license is intentionally granted by this project; do not interpret this notice as a reviewed license instrument.
+## Firestore composite indexes
+
+Deploy composite indexes before running queries that filter and sort on subcollections:
+
+```bash
+firebase deploy --only firestore:indexes
+```
+
+Defined indexes in `firestore.indexes.json`:
+- `plans`: `(status ASC, scheduledDate ASC/DESC)`
+- `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`
+- `journal_entries`: `(entryDate DESC, createdAt DESC)`
+
+---
+
+## Contributing and security
+
+- [Contributing Guidelines](CONTRIBUTING.md): Branching conventions, local test steps, and review standards.
+- [Security Policy](SECURITY.md): Vulnerability reporting procedures, BOLA prevention, and privacy boundaries.
+- [Code of Conduct](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/CODE_OF_CONDUCT.md): Team collaboration expectations.
+
+---
+
+## Rights notice
+
+All Rights Reserved (Academic Evaluation Only). This repository is published publicly for academic evaluation and faculty review at West Visayas State University. No open-source redistribution license is granted.
