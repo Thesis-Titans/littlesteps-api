@@ -3,16 +3,11 @@ info:
   title: LittleSteps API
   version: 0.3.0
   description: >-
-    Health, identity, account data export and account deletion, learning-catalog, child-profile (create, list, read, update, delete),
-    activity planning and completion, milestone observation records, and
-    AI recommendations endpoints are implemented. The recommendations endpoint calls Gemini
-    only when the GEMINI_API_KEY and GEMINI_MODEL server variables are both set; without
-    them, or on any provider failure, it returns the deterministic catalog fallback. Rate
-    limiting is implemented on the AI recommendations endpoint only. Decisions D5 (deletion execution) and D6 (production retention) in docs/child-profile-contract.md were decided on 4 November 2026; child and account deletion and JSON data export are implemented (Issue 17).
-
-
-
-
+    Shared REST API for the LittleSteps early-childhood learning application.
+    Provides caregiver account management, data portability export, cascade deletion,
+    child profiles, age-aware learning activities, milestone tracking, private observation
+    journals, weekly reflection summaries, and AI-assisted play suggestions with deterministic
+    catalog fallbacks.
 servers:
   - url: http://127.0.0.1:5001/{projectId}/asia-southeast1/api
     description: Firebase Functions emulator; replace projectId with the local Firebase project ID.
@@ -24,6 +19,7 @@ paths:
     get:
       operationId: getHealth
       summary: Check API liveness
+      description: Returns HTTP 200 with status ok when the API server is healthy and operational.
       security: []
       responses:
         '200':
@@ -40,6 +36,8 @@ paths:
     get:
       operationId: getCurrentUser
       summary: Return the authenticated Firebase UID
+      description: Returns the authenticated caregiver's verified Firebase user ID.
+      x-implementation-status: implemented
       security:
         - bearerAuth: []
       responses:
@@ -59,13 +57,14 @@ paths:
       operationId: deleteAccount
       summary: Permanently delete the signed-in caregiver's account and all records
       description: >-
-        Hard cascade deletion for the verified caregiver (RA 10173 right to erasure,
-        decision D5). Deletes every owned child with all child-scoped subcollections
-        (plans, milestone observations, journal entries, weekly summaries) child by
-        child, then deletes the caregiver profile document, and finally removes the
-        Firebase Authentication user last. Every step is repeatable so a failed request
-        returns 500 and the client may retry. Only the deletion event and caregiver UID
-        are logged; no record content is written to logs.
+        Hard cascade deletion for the verified caregiver under the RA 10173 right to erasure (Decision D5).
+        Deletes every owned child with all child-scoped subcollections (plans, milestone observations,
+        journal entries, weekly summaries) child by child, then deletes the caregiver profile document,
+        and finally removes the Firebase Authentication user last. Every step is repeatable so a failed request
+        returns 500 and the client may retry. Only the deletion event and caregiver UID are logged; no record
+        content is written to logs.
+      x-requirement: NFR-PRIV-01
+      x-adr: ADR-003
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -88,11 +87,13 @@ paths:
       operationId: exportAccountData
       summary: Download all records for the signed-in caregiver and their children as JSON
       description: >-
-        Structured JSON data portability export (RA 10173 section 18) for the verified
+        Structured JSON data portability export under RA 10173 Section 18 for the verified
         caregiver only. Returns the caregiver profile, owned child profiles, activity
         plans, milestone observations, and private journal entries, projected without
         internal caregiverId fields. Any attempt to target another caregiver returns
         404 RESOURCE_NOT_FOUND. Nothing exported is written to logs.
+      x-requirement: NFR-PRIV-01
+      x-adr: ADR-003
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -116,10 +117,12 @@ paths:
     get:
       operationId: listCatalogActivities
       summary: List and filter learning catalog activities, stories, rhymes, and games
-      description: |
-        Public read endpoint for age-aware catalog browsing (FR-04).
-        Returns activities filtered by age band, type, domain, language, or setting.
+      description: >-
+        Public read endpoint for age-aware learning catalog browsing. Returns activities
+        filtered by age band, activity type, developmental domain, language, or setting.
         Unreviewed or synthetic engineering fixtures are explicitly labeled and cannot be presented as approved.
+      x-requirement: FR-04
+      x-implementation-status: implemented
       security: []
       parameters:
         - name: ageBand
@@ -192,6 +195,9 @@ paths:
     get:
       operationId: getCatalogActivityById
       summary: Retrieve a single catalog activity by ID
+      description: Returns a single approved or demo learning activity by unique identifier, including materials, instructions, safety guidelines, and domain classification.
+      x-requirement: FR-04
+      x-implementation-status: implemented
       security: []
       parameters:
         - name: id
@@ -231,8 +237,11 @@ paths:
     get:
       operationId: listCatalogBooks
       summary: Query picture books catalog from Open Library with caching and fallback
-      description: |
-        Proxy to Open Library REST API with server-side 1-hour in-memory cache and offline fallback (api-reference.md §5.1, ADR-010).
+      description: >-
+        Queries children's picture books through an Open Library proxy with server-side in-memory caching (1 hour) and local offline fallback fixtures.
+      x-requirement: FR-04
+      x-adr: ADR-010
+      x-implementation-status: implemented
       security: []
       parameters:
         - name: subject
@@ -283,11 +292,15 @@ paths:
     get:
       operationId: getWeatherHint
       summary: Coarse weather hint for indoor/outdoor activity setting
-      description: |
-        Weather hint (ADR-009, FR-02/FR-06) powered by Open-Meteo. Calls Open-Meteo with fixed,
-        rounded coordinates (defaulting to Iloilo City: 10.72, 122.56). Never transmits device GPS,
-        caregiver, or child data. Responses are cached for 1 hour. On timeout (>3s) or upstream
-        failure, returns a neutral fallback (condition: unavailable, setting: either, hint: null).
+      description: >-
+        Returns coarse weather conditions and indoor or outdoor activity setting hints powered by Open-Meteo.
+        Calls Open-Meteo with fixed, rounded geographic coordinates (defaulting to Iloilo City: 10.72, 122.56).
+        Never accesses or transmits device GPS or personal identifiers. Responses are cached for 1 hour.
+        On timeout (over 3 seconds) or upstream error, returns a neutral fallback.
+      x-requirement:
+        - FR-02
+        - FR-06
+      x-adr: ADR-009
       x-implementation-status: implemented
       parameters:
         - name: latitude
@@ -335,19 +348,18 @@ paths:
     post:
       operationId: createAiRecommendations
       summary: Suggest reviewed catalog activities for an age band
-      description: |
-        Constrained activity suggestions (api-reference.md section 6). Only reviewed_approved catalog
-        items are ever returned; titles and instructions always come from the catalog. The request
-        carries no child or caregiver identifiers and unknown fields are rejected. A provider failure
-        or invalid provider output is never an error: the response falls back to deterministic
-        catalog ranking (tier 3). With no reviewed content the response is 200 with an empty list.
-        Responses are never cached.
+      description: >-
+        Generates constrained activity suggestions for a specified age band and household context.
+        Only approved catalog items are returned; titles and instructions always originate from reviewed catalog activities.
+        The request carries no child or caregiver identifiers, and unknown fields are rejected. On provider failure
+        or invalid output, the service gracefully falls back to deterministic catalog ranking (tier 3).
+        With no reviewed content, returns HTTP 200 with an empty list. Responses are never cached.
 
-        Rate limit: 10 requests per signed-in user and, by default, 30 per IP address (configurable; 0 disables
-        the per-IP cap) in each clock hour
-        (fixed window, UTC). Every authenticated request counts, including ones rejected as
-        invalid. Over the limit the response is 429 with Retry-After set to the seconds left in
-        the window. If the limit store is unavailable the request is allowed.
+        Rate limit: 10 requests per signed-in user and 30 per IP address in each clock hour (fixed window, UTC).
+        Every authenticated request counts toward the quota, including requests rejected as invalid. Over the limit,
+        the response is HTTP 429 with Retry-After set to the seconds remaining in the current window.
+      x-requirement: FR-06
+      x-adr: ADR-006
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -381,14 +393,15 @@ paths:
     post:
       operationId: createStoryActivity
       summary: Suggest a companion play idea for a storybook
-      description: |
-        Storybook companion suggestion (api-reference.md section 6). From a book title,
-        subject tags and the child's age band, returns one short play idea with domain,
-        instructions and safety notice. The request carries no child or caregiver identifiers
-        and unknown fields are rejected. A provider failure, timeout, or invalid output falls
-        back to a deterministic catalog activity match (tier 3). Responses are never cached.
+      description: >-
+        Generates a companion play idea for a children's storybook. From a book title, subject tags,
+        and the child's age band, returns one short play idea with developmental domain, step-by-step
+        instructions, and safety notes. The request carries no child or caregiver identifiers, and unknown
+        fields are rejected. On provider failure, timeout, or invalid output, falls back to a deterministic catalog match (tier 3). Responses are never cached.
 
         Protected by Firebase authentication and the same hourly AI rate limits as recommendations.
+      x-requirement: FR-06
+      x-adr: ADR-010
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -588,10 +601,12 @@ paths:
       description: >-
         Hard cascade deletion of an owned child and all subcollections (plans,
         milestone observations, journal entries, weekly summaries) via recursive
-        delete inside the request (decision D5). Missing, malformed, or cross-owner
+        delete inside the request (Decision D5). Missing, malformed, or cross-owner
         child IDs return the identical 404 RESOURCE_NOT_FOUND response. Only the
         deletion event and child ID are logged; no profile or observation content
         is written to logs.
+      x-requirement: NFR-PRIV-01
+      x-adr: ADR-003
       x-implementation-status: implemented
       security:
         - bearerAuth: []
@@ -931,8 +946,11 @@ paths:
       operationId: createChildJournalEntry
       summary: Create a private observation journal entry
       description: >-
-        Records a confidential qualitative observation for an owned child.
-        Content is strictly excluded from AI prompts and telemetry per NFR-PRIV-02.
+        Records a confidential qualitative observation entry for an owned child.
+        Observation content is strictly excluded from external AI prompts, telemetry, and external services.
+      x-requirement:
+        - FR-03
+        - NFR-PRIV-02
       x-implementation-status: implemented
       security:
         - bearerAuth: []
