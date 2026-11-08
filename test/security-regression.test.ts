@@ -253,6 +253,17 @@ describe("M5 Security Audit & Cross-Feature Authorization Matrix (Issue #14)", (
         body: { status: "observed" }
       },
       {
+        label: "GET /api/v1/children/:childId/journal",
+        method: "get",
+        path: `/api/v1/children/${CHILD_A_ID}/journal`
+      },
+      {
+        label: "POST /api/v1/children/:childId/journal",
+        method: "post",
+        path: `/api/v1/children/${CHILD_A_ID}/journal`,
+        body: { entryDate: "2026-11-05", content: "Unauth journal" }
+      },
+      {
         label: "POST /api/v1/ai/recommendations",
         method: "post",
         path: "/api/v1/ai/recommendations",
@@ -342,6 +353,28 @@ describe("M5 Security Audit & Cross-Feature Authorization Matrix (Issue #14)", (
         method: "patch",
         pathFor: (id) => `/api/v1/children/${id}/milestones/${MILESTONE_KEY}`,
         body: { status: "observed", notes: "Hijacked" }
+      },
+      {
+        label: "GET /api/v1/children/:childId/journal",
+        method: "get",
+        pathFor: (id) => `/api/v1/children/${id}/journal`
+      },
+      {
+        label: "POST /api/v1/children/:childId/journal",
+        method: "post",
+        pathFor: (id) => `/api/v1/children/${id}/journal`,
+        body: { entryDate: "2026-11-05", content: "Cross owner journal" }
+      },
+      {
+        label: "PATCH /api/v1/children/:childId/journal/:entryId",
+        method: "patch",
+        pathFor: (id) => `/api/v1/children/${id}/journal/44444444-4444-4444-8444-444444444444`,
+        body: { content: "Tampered" }
+      },
+      {
+        label: "DELETE /api/v1/children/:childId/journal/:entryId",
+        method: "delete",
+        pathFor: (id) => `/api/v1/children/${id}/journal/44444444-4444-4444-8444-444444444444`
       }
     ];
 
@@ -417,6 +450,16 @@ describe("M5 Security Audit & Cross-Feature Authorization Matrix (Issue #14)", (
           caregiverId: "uid-a"
         });
       assertSafeErrorEnvelope(milestoneCreate, 400, "INVALID_INPUT");
+
+      const journalCreate = await request(app)
+        .post(`/api/v1/children/${CHILD_B_ID}/journal`)
+        .set("Authorization", AUTH_B)
+        .send({
+          entryDate: "2026-11-05",
+          content: "Spooky",
+          caregiverId: "uid-a"
+        });
+      assertSafeErrorEnvelope(journalCreate, 400, "INVALID_INPUT");
 
       const aiReq = await request(app)
         .post("/api/v1/ai/recommendations")

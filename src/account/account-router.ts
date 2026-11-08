@@ -8,10 +8,13 @@ import { getMilestonesStore } from "../milestones/milestones-router.js";
 import type { PublicMilestoneObservation, StoredMilestoneObservation } from "../milestones/types.js";
 import {
   createFirestoreCaregiversStore,
-  createFirestoreJournalStore,
-  type CaregiversStore,
-  type JournalStore
+  type CaregiversStore
 } from "./account-store.js";
+import {
+  getJournalStore,
+  setJournalStore
+} from "../journal/journal-router.js";
+export { getJournalStore, setJournalStore };
 import type {
   AccountExport,
   PublicCaregiverProfile,
@@ -22,7 +25,6 @@ import type {
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 let caregiversStore: CaregiversStore | undefined;
-let journalStore: JournalStore | undefined;
 
 export type AuthUserDeleter = (uid: string) => Promise<void>;
 let authUserDeleter: AuthUserDeleter | undefined;
@@ -31,11 +33,6 @@ export function setCaregiversStore(next: CaregiversStore | undefined): void {
   caregiversStore = next;
 }
 export const getCaregiversStore = (): CaregiversStore => (caregiversStore ??= createFirestoreCaregiversStore());
-
-export function setJournalStore(next: JournalStore | undefined): void {
-  journalStore = next;
-}
-export const getJournalStore = (): JournalStore => (journalStore ??= createFirestoreJournalStore());
 
 export function setAuthUserDeleter(next: AuthUserDeleter | undefined): void {
   authUserDeleter = next;

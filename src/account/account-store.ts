@@ -1,20 +1,18 @@
 import { getApps, initializeApp } from "firebase-admin/app";
-import { FieldPath, getFirestore } from "firebase-admin/firestore";
-import { stripUndefined } from "../strip-undefined.js";
-import type { StoredCaregiverProfile, StoredJournalEntry } from "./types.js";
+import { getFirestore } from "firebase-admin/firestore";
+import type { StoredCaregiverProfile } from "./types.js";
 
 export interface CaregiversStore {
   getProfile(uid: string): Promise<StoredCaregiverProfile | null>;
   deleteCaregiver(uid: string): Promise<void>;
 }
 
-export interface JournalStore {
-  list(uid: string, childId: string): Promise<StoredJournalEntry[]>;
-  create(uid: string, childId: string, entry: StoredJournalEntry): Promise<boolean>;
-  deleteAllForChild?(uid: string, childId: string): Promise<void>;
-}
-
-export const JOURNAL_LIST_LIMIT = 100;
+export {
+  createFirestoreJournalStore,
+  createMemoryJournalStore,
+  JOURNAL_LIST_LIMIT,
+  type JournalStore
+} from "../journal/journal-store.js";
 
 const ownedProfile = (uid: string, profile: Partial<StoredCaregiverProfile> | undefined): StoredCaregiverProfile | null => {
   if (!profile) return null;
@@ -39,13 +37,6 @@ const ownedProfile = (uid: string, profile: Partial<StoredCaregiverProfile> | un
     ...(typeof profile.updatedAt === "string" ? { updatedAt: profile.updatedAt } : {})
   };
 };
-
-const ownedJournalEntry = (
-  uid: string,
-  childId: string,
-  entry: StoredJournalEntry | undefined
-): StoredJournalEntry | null =>
-  entry && entry.caregiverId === uid && entry.childId === childId ? entry : null;
 
 export function createFirestoreCaregiversStore(): CaregiversStore {
   if (getApps().length === 0) initializeApp();
@@ -84,64 +75,6 @@ export function createMemoryCaregiversStore(): CaregiversStore & { data: Map<str
     },
     async deleteCaregiver(uid) {
       data.delete(uid);
-    }
-  };
-}
-
-export function createFirestoreJournalStore(): JournalStore {
-  if (getApps().length === 0) initializeApp();
-  const col = (uid: string, childId: string) =>
-    getFirestore()
-      .collection("caregivers")
-      .doc(uid)
-      .collection("children")
-      .doc(childId)
-      .collection("journal_entries");
-
-  return {
-    async list(uid, childId) {
-      const snap = await col(uid, childId)
-        .orderBy("entryDate")
-        .orderBy(FieldPath.documentId())
-        .limit(JOURNAL_LIST_LIMIT)
-        .get();
-      return snap.docs
-        .map((d) => ownedJournalEntry(uid, childId, d.data() as StoredJournalEntry))
-        .filter((e): e is StoredJournalEntry => e !== null);
-    },
-    async create(uid, childId, entry) {
-      await col(uid, childId).doc(entry.id).set(stripUndefined(entry));
-      return true;
-    }
-  };
-}
-
-export function createMemoryJournalStore(): JournalStore & { data: Map<string, StoredJournalEntry> } {
-  const data = new Map<string, StoredJournalEntry>(); // key: `${uid}/${childId}/${entryId}`
-
-  return {
-    data,
-    async list(uid, childId) {
-      return [...data.entries()]
-        .filter(([k]) => k.startsWith(`${uid}/${childId}/`))
-        .map(([, v]) => ownedJournalEntry(uid, childId, v))
-        .filter((e): e is StoredJournalEntry => e !== null)
-        .sort(
-          (a, b) =>
-            a.entryDate.localeCompare(b.entryDate) ||
-            a.createdAt.localeCompare(b.createdAt) ||
-            a.id.localeCompare(b.id)
-        )
-        .slice(0, JOURNAL_LIST_LIMIT);
-    },
-    async create(uid, childId, entry) {
-      data.set(`${uid}/${childId}/${entry.id}`, { ...entry });
-      return true;
-    },
-    async deleteAllForChild(uid, childId) {
-      for (const k of data.keys()) {
-        if (k.startsWith(`${uid}/${childId}/`)) data.delete(k);
-      }
     }
   };
 }
