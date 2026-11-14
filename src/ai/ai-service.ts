@@ -1,9 +1,9 @@
 import { getApprovedActivities } from "../catalog/catalog-service.js";
 import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
 import { cleanMaterials } from "./sanitize.js";
-import { buildPrompt, buildStoryPrompt } from "./prompt.js";
+import { buildPrompt, buildStoryPrompt, buildChatPrompt } from "./prompt.js";
 import { filterEligible, rankActivities, FALLBACK_WHY } from "./fallback.js";
-import { validateOutput, validateStoryOutput } from "./validate-output.js";
+import { validateOutput, validateStoryOutput, validateChatOutput } from "./validate-output.js";
 import type { AiProvider } from "./providers/provider.js";
 import {
   DISCLAIMER,
@@ -12,7 +12,9 @@ import {
   type RecommendationResponse,
   type StoryActivityRequest,
   type StoryActivityResponse,
-  type StoryActivitySuggestion
+  type StoryActivitySuggestion,
+  type ChatRequest,
+  type ChatResponse
 } from "./types.js";
 
 export const PROVIDER_TIMEOUT_MS = 8000;
@@ -190,6 +192,86 @@ export async function suggestStoryActivity(
   return {
     bookTitle,
     suggestion: fallback,
+    provenance: {
+      tier: 3,
+      source: "catalog",
+      badge: null,
+      disclaimer: DISCLAIMER
+    }
+  };
+}
+
+const PEDIATRIC_MEDICAL_PATTERN = /\b(?:fever|sick|illness|cough|vomit|pain|medicine|medication|doctor|pediatrician|hospital|diagnos|autism|adhd|delay|disorder|speech therapy|vaccin)\b/i;
+
+/**
+ * Conversational Play Assistant.
+ * Strictly answers everyday play and routine queries.
+ * Strictly redirects medical or clinical concerns.
+ */
+export async function chatPlayAssistant(
+  request: ChatRequest,
+  provider: AiProvider | null,
+  timeoutMs = PROVIDER_TIMEOUT_MS
+): Promise<ChatResponse> {
+  const startedAt = Date.now();
+
+  // 1. Strict Pediatric Non-Diagnostic Guardrail
+  if (PEDIATRIC_MEDICAL_PATTERN.test(request.message)) {
+    logEvent("ai.chat_medical_guardrail", 1, startedAt);
+    return {
+      reply: "I can only help with everyday play and routine ideas. For health or developmental questions, please consult your pediatrician or local barangay health worker.",
+      suggestedActivity: null,
+      provenance: {
+        tier: 1,
+        source: "pediatric-guardrail",
+        badge: "Suggested by AI",
+        disclaimer: DISCLAIMER
+      }
+    };
+  }
+
+  // 2. Provider Execution (Gemini / Ollama)
+  if (provider) {
+    try {
+      const prompt = buildChatPrompt({
+        message: request.message,
+        ageBand: request.ageBand,
+        childNickname: request.childNickname
+      });
+      const reply = await callWithTimeout(provider, prompt, timeoutMs);
+      const validated = validateChatOutput(reply);
+      if (validated) {
+        logEvent("ai.chat_provider_ok", 1, startedAt);
+        return {
+          reply: validated.reply,
+          suggestedActivity: validated.suggestedActivity,
+          provenance: {
+            tier: 1,
+            source: provider.model,
+            badge: "Suggested by AI",
+            disclaimer: DISCLAIMER
+          }
+        };
+      }
+      logEvent("ai.chat_invalid_output", 3, startedAt);
+    } catch (error) {
+      logEvent("ai.chat_provider_failed", 3, startedAt, error instanceof Error ? error.name : "Unknown");
+    }
+  }
+
+  // 3. Fallback to Catalog Play Activity
+  logEvent("ai.chat_fallback", 3, startedAt);
+  const fallback = findStoryFallbackActivity(request.ageBand, [request.message]);
+  return {
+    reply: `Here is a fun play idea to try${request.childNickname ? ` with ${request.childNickname}` : ""} using everyday items around the house!`,
+    suggestedActivity: {
+      title: fallback.title,
+      domain: fallback.domain,
+      durationMinutes: 10,
+      instructions: fallback.instructions,
+      materials: ["Common household items"],
+      safetyNotice: fallback.safetyNotice
+    },
     provenance: {
       tier: 3,
       source: "catalog",

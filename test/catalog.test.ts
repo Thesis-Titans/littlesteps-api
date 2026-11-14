@@ -258,6 +258,28 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(res.body.error.code).toBe("INVALID_INPUT");
     });
   });
+
+  describe("GET /api/v1/catalog/books/search", () => {
+    it("returns 400 INVALID_INPUT when search query q is missing", async () => {
+      const res = await request(app).get("/api/v1/catalog/books/search");
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("INVALID_INPUT");
+    });
+
+    it("returns 400 INVALID_INPUT when search query q is empty", async () => {
+      const res = await request(app).get("/api/v1/catalog/books/search?q=");
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("INVALID_INPUT");
+    });
+
+    it("returns search results or fallback matching query", async () => {
+      const res = await request(app).get("/api/v1/catalog/books/search?q=caterpillar&limit=3");
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.books)).toBe(true);
+      expect(res.body.books.length).toBeGreaterThan(0);
+      expect(res.headers["cache-control"]).toMatch(/public, max-age=\d+/);
+    });
+  });
 });
 
 describe("Open Library User-Agent", () => {

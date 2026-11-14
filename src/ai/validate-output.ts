@@ -79,6 +79,50 @@ export function validateStoryOutput(reply: unknown): StoryPick | null {
   return { title, domain, instructions, safetyNotice };
 }
 
+const ChatReplySchema = z.object({
+  reply: z.string().trim().min(1).max(500).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+  suggestedActivity: z
+    .object({
+      title: z.string().trim().min(1).max(100).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+      domain: z.enum(["cognitive", "motor", "language", "socioEmotional"]),
+      durationMinutes: z.number().int().min(1).max(60).default(10),
+      instructions: z.string().trim().min(1).max(500).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+      materials: z.array(z.string().trim().max(50)).max(10).default([]),
+      safetyNotice: z.string().trim().min(1).max(200).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w))
+    })
+    .nullable()
+});
+
+export interface ChatPick {
+  reply: string;
+  suggestedActivity: {
+    title: string;
+    domain: string;
+    durationMinutes: number;
+    instructions: string;
+    materials: string[];
+    safetyNotice: string;
+  } | null;
+}
+
+/** Validates LLM conversational play assistant response. */
+export function validateChatOutput(reply: unknown): ChatPick | null {
+  const parsed = ChatReplySchema.safeParse(reply);
+  if (!parsed.success) return null;
+  const { reply: text, suggestedActivity } = parsed.data;
+  if (hitsDenylist(text)) return null;
+  if (suggestedActivity) {
+    if (
+      hitsDenylist(suggestedActivity.title) ||
+      hitsDenylist(suggestedActivity.instructions) ||
+      hitsDenylist(suggestedActivity.safetyNotice)
+    ) {
+      return null;
+    }
+  }
+  return { reply: text, suggestedActivity };
+}
+
 /** Returns the picks, or null when any part of the reply is unacceptable (the whole reply is rejected). */
 export function validateOutput(reply: unknown, candidateIds: ReadonlySet<string>, count: number): Pick[] | null {
   const parsed = ReplySchema.safeParse(reply);

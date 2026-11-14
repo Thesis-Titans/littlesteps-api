@@ -91,6 +91,15 @@ export const BooksQuerySchema = z.object({
 });
 export type BooksQuery = z.infer<typeof BooksQuerySchema>;
 
+export const BooksSearchQuerySchema = z.object({
+  q: z.string().trim().min(1).max(100),
+  limit: z.preprocess(
+    (value) => (value !== undefined ? Number(value) : 10),
+    z.number().int().min(1).max(20)
+  ).default(10)
+});
+export type BooksSearchQuery = z.infer<typeof BooksSearchQuerySchema>;
+
 export const WeatherQuerySchema = z.object({
   latitude: z.preprocess(
     (value) => (value !== undefined ? Number(value) : 10.72),

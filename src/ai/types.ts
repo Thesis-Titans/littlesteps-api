@@ -78,5 +78,34 @@ export interface StoryActivityResponse {
   provenance: StoryActivityProvenance;
 }
 
+export const ChatRequestSchema = z
+  .object({
+    message: z.string().trim().min(1).max(500),
+    ageBand: AgeBandSchema,
+    childNickname: z.string().trim().max(50).optional()
+  })
+  .strict();
+export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+
+export interface ChatActivitySuggestion {
+  title: string;
+  domain: string;
+  durationMinutes: number;
+  instructions: string;
+  materials: string[];
+  safetyNotice: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  suggestedActivity: ChatActivitySuggestion | null;
+  provenance: {
+    tier: 1 | 2 | 3;
+    source: string;
+    badge: "Suggested by AI" | null;
+    disclaimer: string;
+  };
+}
+
 export const DISCLAIMER = "Observational play suggestion only. Not developmental assessment.";
 export const GUIDANCE = "You know your child best. Change it as you like, and stay close while you play.";

@@ -2,12 +2,14 @@ import { Router, type Request, type Response } from "express";
 import {
   getCatalogActivities,
   getCatalogActivityById,
-  getBooksCatalog
+  getBooksCatalog,
+  searchBooksCatalog
 } from "./catalog-service.js";
 import { getWeatherForecast } from "./weather-service.js";
 import {
   CatalogActivitiesQuerySchema,
   BooksQuerySchema,
+  BooksSearchQuerySchema,
   WeatherQuerySchema,
   CatalogIdParamSchema
 } from "./types.js";
@@ -79,6 +81,29 @@ catalogRouter.get("/books", async (request: Request, response: Response) => {
 
   const { subject, limit } = queryResult.data;
   const { response: booksData, fromCache } = await getBooksCatalog(subject, limit);
+
+  const isFallback = booksData.provenance.source === "local-fallback";
+  response.setHeader("Cache-Control", isFallback ? "public, max-age=60" : "public, max-age=3600");
+  response.setHeader("X-Cache", fromCache ? "HIT" : "MISS");
+  response.status(200).json(booksData);
+});
+
+catalogRouter.get("/books/search", async (request: Request, response: Response) => {
+  const queryResult = BooksSearchQuerySchema.safeParse(request.query);
+
+  if (!queryResult.success) {
+    response.status(400).json({
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid book search query parameters",
+        details: queryResult.error.issues.map((i) => ({ field: i.path.join("."), issue: i.message }))
+      }
+    });
+    return;
+  }
+
+  const { q, limit } = queryResult.data;
+  const { response: booksData, fromCache } = await searchBooksCatalog(q, limit);
 
   const isFallback = booksData.provenance.source === "local-fallback";
   response.setHeader("Cache-Control", isFallback ? "public, max-age=60" : "public, max-age=3600");

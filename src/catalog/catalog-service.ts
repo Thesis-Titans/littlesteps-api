@@ -206,6 +206,95 @@ export async function getBooksCatalog(
   }
 }
 
+export async function searchBooksCatalog(
+  query: string,
+  limit = 10,
+  fetchTimeoutMs = 3000
+): Promise<{ response: BooksResponse; fromCache: boolean }> {
+  const cacheKey = `search:${query.toLowerCase().trim()}:${limit}`;
+  const now = Date.now();
+  const cached = booksCache.get(cacheKey);
+
+  if (cached && now - cached.timestamp < cached.ttlMs) {
+    return { response: cached.data, fromCache: true };
+  }
+
+  try {
+    const upstreamUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
+
+    const userAgent = buildUserAgent(process.env.OPEN_LIBRARY_CONTACT);
+    const res = await fetch(upstreamUrl, {
+      signal: controller.signal,
+      headers: { "User-Agent": userAgent }
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`Open Library search returned status ${res.status}`);
+    }
+
+    const data = (await res.json()) as {
+      numFound?: number;
+      docs?: Array<{
+        key?: string;
+        title?: string;
+        author_name?: string[];
+        cover_i?: number;
+        subject?: string[];
+      }>;
+    };
+
+    const books: BookItem[] = (data.docs ?? []).map((doc) => {
+      const rawKey = doc.key ?? "";
+      const id = rawKey.replace("/works/", "") || rawKey;
+      return {
+        id,
+        title: doc.title ?? "Untitled",
+        authors: doc.author_name ?? [],
+        coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
+        subjects: (doc.subject ?? []).slice(0, 5)
+      };
+    });
+
+    const result: BooksResponse = {
+      subject: `search:${query}`,
+      totalCount: data.numFound ?? books.length,
+      books,
+      provenance: {
+        source: "Open Library (Internet Archive)",
+        license: OPEN_LIBRARY_LICENSE
+      }
+    };
+
+    setBooksCache(cacheKey, { timestamp: now, ttlMs: CACHE_TTL_MS, data: result });
+    return { response: result, fromCache: false };
+  } catch {
+    const lower = query.toLowerCase();
+    const matching = FALLBACK_BOOKS.filter(
+      (b) =>
+        b.title.toLowerCase().includes(lower) ||
+        b.authors.some((a) => a.toLowerCase().includes(lower)) ||
+        b.subjects.some((s) => s.toLowerCase().includes(lower))
+    );
+    const fallbackList = (matching.length > 0 ? matching : FALLBACK_BOOKS).slice(0, limit);
+
+    const fallbackResponse: BooksResponse = {
+      subject: `search:${query}`,
+      totalCount: fallbackList.length,
+      books: fallbackList,
+      provenance: {
+        source: "local-fallback",
+        license: OPEN_LIBRARY_LICENSE
+      }
+    };
+
+    setBooksCache(cacheKey, { timestamp: now, ttlMs: FALLBACK_CACHE_TTL_MS, data: fallbackResponse });
+    return { response: fallbackResponse, fromCache: false };
+  }
+}
+
 export function clearBooksCache(): void {
   booksCache.clear();
 }
