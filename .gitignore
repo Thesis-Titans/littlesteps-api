@@ -14,4 +14,6 @@ firebase-debug*.log
 firestore-debug*.log
 database-debug*.log
 repomix-*.xml
+emulator-data/
+.emulator-data/
 
