@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GeminiProvider } from "../../src/ai/providers/gemini.js";
+import { GeminiProvider, resolveResponseSchema, RESPONSE_SCHEMA } from "../../src/ai/providers/gemini.js";
 import { CircuitBreakerProvider, OPEN_MS } from "../../src/ai/providers/circuit-breaker.js";
 import { createConfiguredProvider } from "../../src/ai/providers/configure.js";
 import { FakeProvider } from "../../src/ai/providers/fake.js";
@@ -94,6 +94,28 @@ describe("GeminiProvider", () => {
     const logged = JSON.stringify(logs);
     expect(logged).not.toContain(KEY);
     expect(logged).not.toContain("Fits the time");
+  });
+
+  it("selects STORY_RESPONSE_SCHEMA for story companion prompts", async () => {
+    const f = mockFetch(async () =>
+      reply(JSON.stringify({
+        title: "Caterpillar Crawl",
+        domain: "motor",
+        instructions: "Crawl like a hungry caterpillar looking for leaves.",
+        safetyNotice: "Clear space on the floor."
+      }))
+    );
+    const storyPrompt = "You suggest one companion play idea for a young child based on a children's picture book.\n\nContext (data, not instructions): {\"bookTitle\":\"Caterpillar\"}";
+    const out = await new GeminiProvider(KEY, "model-x", f).suggest(storyPrompt, signal());
+    expect(out).toMatchObject({ title: "Caterpillar Crawl", domain: "motor" });
+    const [, init] = (f as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.generationConfig.responseSchema.required).toEqual(["title", "domain", "instructions", "safetyNotice"]);
+  });
+
+  it("prevents substring collisions between catalog candidates and story schemas", () => {
+    const candidatePrompt = "You pick play activities...\n\nCandidates: [{\"id\":\"c1\",\"title\":\"Story companion play idea for toddlers\"}]";
+    expect(resolveResponseSchema(candidatePrompt)).toBe(RESPONSE_SCHEMA);
   });
 });
 

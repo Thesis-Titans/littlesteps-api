@@ -288,6 +288,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/catalog/books/search:
+    get:
+      operationId: searchCatalogBooks
+      summary: Search picture books catalog from Open Library with caching and fallback
+      description: >-
+        Searches children's picture books through Open Library search API proxy with server-side in-memory caching (1 hour) and local offline fallback matching.
+      x-requirement: FR-04
+      x-adr: ADR-010
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query text (1 to 100 characters)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            example: caterpillar
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of search results to return (default 10, max 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 10
+      responses:
+        '200':
+          description: Picture book search results with provenance. Fallback responses use max-age=60.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+            X-Cache:
+              description: >-
+                Whether the response was served from the server-side cache.
+                Documented non-standard debug header. RFC 6648 advises against
+                new X- headers; Cache-Status (RFC 9211) is an alternative, not reviewed.
+              schema:
+                type: string
+                enum: [HIT, MISS]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooksResponse'
+        '400':
+          description: Invalid query parameters (code INVALID_INPUT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/catalog/weather:
     get:
       operationId: getWeatherHint
