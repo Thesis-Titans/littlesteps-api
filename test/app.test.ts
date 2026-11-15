@@ -38,7 +38,13 @@ describe("request body limits", () => {
       .set("Authorization", "Bearer uid-a")
       .send({ nickname: "x".repeat(101 * 1024) });
     expect(response.status).toBe(413);
-    expect(response.body).toEqual({ error: { code: "PAYLOAD_TOO_LARGE", message: "The request body is too large." } });
+    expect(response.body).toEqual({
+      error: {
+        code: "PAYLOAD_TOO_LARGE",
+        message: "The request body is too large.",
+        requestId: expect.any(String)
+      }
+    });
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
@@ -82,7 +88,7 @@ describe("CORS configuration", () => {
       .set("Origin", "http://unauthorized-origin.com");
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
-      error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed" }
+      error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed", requestId: expect.any(String) }
     });
   });
 });

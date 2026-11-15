@@ -11,6 +11,8 @@ import { milestonesRouter } from "./milestones/milestones-router.js";
 import { journalRouter } from "./journal/journal-router.js";
 import { summaryRouter } from "./summary/summary-router.js";
 import { requireFirebaseUser } from "./middleware/require-firebase-user.js";
+import { requestIdMiddleware, getRequestId } from "./middleware/request-id.js";
+import { readyHandler, setFirestorePingFn } from "./health/ready.js";
 
 const app = express();
 const allowedOrigins = new Set(
@@ -26,6 +28,7 @@ app.disable("x-powered-by");
 // shortcut: not verified on a deployed function; if more proxies sit in front, per-IP counts will be wrong.
 // Hop count comes from TRUST_PROXY_HOPS (default 1); verify it on a deployed function.
 app.set("trust proxy", parseTrustProxyHops(process.env.TRUST_PROXY_HOPS));
+app.use(requestIdMiddleware);
 app.use(helmet());
 // Default for every route, including errors; the catalog router overrides it with its public caching.
 app.use((_request, response, next) => {
@@ -42,6 +45,7 @@ app.use(cors({
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Authorization", "Content-Type", "X-Request-Id"],
+  exposedHeaders: ["X-Request-Id"],
   maxAge: 600
 }));
 app.use(express.json({ limit: "100kb", strict: true }));
@@ -50,6 +54,7 @@ app.get("/health", (_request, response) => {
   response.setHeader("Cache-Control", "no-store");
   response.status(200).json({ status: "ok" });
 });
+app.get("/ready", readyHandler);
 
 app.use("/api/v1/catalog", catalogRouter);
 app.use("/api/v1/children/:childId/plans", requireFirebaseUser, activitiesRouter);
@@ -63,24 +68,35 @@ app.use("/api/v1/ai", requireFirebaseUser, aiRateLimit, aiRouter);
 app.use("/api/v1/me", requireFirebaseUser, accountRouter);
 
 app.use((_request, response) => {
-  response.status(404).json({ error: { code: "RESOURCE_NOT_FOUND", message: "Resource not found" } });
+  const requestId = getRequestId(response);
+  response.status(404).json({
+    error: {
+      code: "RESOURCE_NOT_FOUND",
+      message: "Resource not found",
+      requestId
+    }
+  });
 });
 
 const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
+  const requestId = getRequestId(response);
   if ((error as { type?: unknown } | null)?.type === "entity.too.large") {
-    response.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "The request body is too large." } });
+    console.error(JSON.stringify({ event: "api.error", requestId, code: "PAYLOAD_TOO_LARGE", message: "The request body is too large." }));
+    response.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "The request body is too large.", requestId } });
     return;
   }
   if (error instanceof SyntaxError) {
-    response.status(400).json({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } });
+    console.error(JSON.stringify({ event: "api.error", requestId, code: "INVALID_JSON", message: "Request body must be valid JSON" }));
+    response.status(400).json({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON", requestId } });
     return;
   }
   if (error instanceof Error && error.message === "Origin not allowed") {
-    response.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed" } });
+    console.error(JSON.stringify({ event: "api.error", requestId, code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed" }));
+    response.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origin is not allowed", requestId } });
     return;
   }
-  response.status(500).json({ error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } });
+  response.status(500).json({ error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred", requestId } });
 };
 
 app.use(errorHandler);
-export { app };
+export { app, setFirestorePingFn };

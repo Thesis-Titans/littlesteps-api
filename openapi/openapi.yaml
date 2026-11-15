@@ -32,6 +32,70 @@ paths:
                 properties:
                   status:
                     const: ok
+  /ready:
+    get:
+      operationId: getReadiness
+      summary: Check API readiness and Firestore connectivity
+      description: >-
+        Returns HTTP 200 when the API server is operational and Firestore connectivity check succeeds.
+        Returns HTTP 503 SERVICE_UNAVAILABLE if Firestore ping fails.
+      security: []
+      responses:
+        '200':
+          description: API is ready and Firestore is connected
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, firestore]
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+                    example: ready
+                  firestore:
+                    type: string
+                    enum: [connected]
+                    example: connected
+        '503':
+          description: Service unavailable due to database connectivity failure
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, error]
+                properties:
+                  status:
+                    type: string
+                    enum: [unhealthy]
+                    example: unhealthy
+                  error:
+                    type: object
+                    additionalProperties: false
+                    required: [code, message, requestId]
+                    properties:
+                      code:
+                        type: string
+                        enum: [SERVICE_UNAVAILABLE]
+                        example: SERVICE_UNAVAILABLE
+                      message:
+                        type: string
+                        example: Firestore connection failed
+                      requestId:
+                        type: string
+                        example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
   /api/v1/me:
     get:
       operationId: getCurrentUser
@@ -1416,6 +1480,10 @@ components:
                     type: string
                   issue:
                     type: string
+            requestId:
+              type: string
+              description: Unique request correlation ID matching the X-Request-Id header.
+              example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
       description: Existing safe error envelope; never includes resource metadata or token details.
     ActivityType:
       type: string
@@ -2189,6 +2257,15 @@ components:
           examples:
             rateLimited:
               value: { error: { code: RATE_LIMITED, message: You have reached the hourly limit for suggestions. Please try again later. } }
+  parameters:
+    XRequestIdHeader:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Optional client-supplied request correlation ID. If omitted, the server generates a UUID v4.
+      schema:
+        type: string
+        example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
   headers:
     RetryAfter:
       description: Seconds to wait before retrying (RFC 9110 section 10.2.3).
@@ -2204,6 +2281,11 @@ components:
       schema:
         type: string
         enum: [no-store]
+    XRequestId:
+      description: Unique identifier for request tracing and correlation.
+      schema:
+        type: string
+        example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
   securitySchemes:
     bearerAuth:
       type: http
