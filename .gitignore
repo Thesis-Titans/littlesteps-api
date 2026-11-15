@@ -17,3 +17,4 @@ repomix-*.xml
 emulator-data/
 .emulator-data/
 
+firebase-export-*/

@@ -29,7 +29,7 @@ async function readCapped(response: Response): Promise<string> {
 }
 
 /** Reply shape the model must follow; the service validates it again against the candidate ids. */
-const RESPONSE_SCHEMA = {
+export const RESPONSE_SCHEMA = {
   type: t("OBJECT"),
   properties: {
     picks: {
@@ -44,6 +44,29 @@ const RESPONSE_SCHEMA = {
   required: ["picks"]
 };
 
+export const STORY_RESPONSE_SCHEMA = {
+  type: t("OBJECT"),
+  properties: {
+    title: { type: t("STRING") },
+    domain: { type: t("STRING"), enum: ["cognitive", "motor", "language", "socioEmotional"] },
+    instructions: { type: t("STRING") },
+    safetyNotice: { type: t("STRING") }
+  },
+  required: ["title", "domain", "instructions", "safetyNotice"]
+};
+
+export function resolveResponseSchema(prompt: string): Record<string, unknown> {
+  if (
+    prompt.startsWith("You suggest one companion play idea") ||
+    prompt.includes("You are an early-childhood play specialist") ||
+    prompt.includes("Book Title:") ||
+    prompt.includes('"bookTitle":')
+  ) {
+    return STORY_RESPONSE_SCHEMA;
+  }
+  return RESPONSE_SCHEMA;
+}
+
 /** Messages are fixed strings: never the request, the reply or the underlying error, so the key cannot leak. */
 export class GeminiError extends Error {
   override name = "GeminiError";
@@ -57,6 +80,7 @@ export class GeminiProvider implements AiProvider {
   ) {}
 
   async suggest(prompt: string, signal: AbortSignal): Promise<unknown> {
+    const responseSchema = resolveResponseSchema(prompt);
     let response: Response;
     try {
       response = await this.fetchFn(`${BASE_URL}/${encodeURIComponent(this.model)}:generateContent`, {
@@ -69,7 +93,7 @@ export class GeminiProvider implements AiProvider {
             temperature: 0.2,
             maxOutputTokens: 1024,
             responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA
+            responseSchema
           }
           // safetySettings omitted on purpose: provider defaults apply.
         }),

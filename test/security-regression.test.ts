@@ -486,7 +486,11 @@ describe("M5 Security Audit & Cross-Feature Authorization Matrix (Issue #14)", (
       const res = await request(app).get("/api/v1/children").set("Authorization", AUTH_A);
       assertSafeErrorEnvelope(res, 500, "INTERNAL_ERROR");
       expect(res.body).toEqual({
-        error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" }
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "An unexpected error occurred",
+          requestId: expect.any(String)
+        }
       });
       expect(logs).toEqual([]);
     });
