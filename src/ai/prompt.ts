@@ -1,3 +1,7 @@
+/**
+ * Prompt generation for AI recommendations and story companions.
+ * Enforces non-diagnostic, pediatric early childhood developmental boundaries.
+ */
 import type { AgeBand, Language, Setting } from "../catalog/types.js";
 
 export interface PromptCandidate {
