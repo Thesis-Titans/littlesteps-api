@@ -1,6 +1,7 @@
 import type { PublicPlan } from "../activities/types.js";
 import type { PublicChild } from "../children/types.js";
 import type { PublicMilestoneObservation } from "../milestones/types.js";
+import type { PublicBook } from "../books/types.js";
 
 export interface WeatherLocation {
   name: string;
@@ -49,5 +50,6 @@ export interface AccountExport {
   plans: PublicPlan[];
   observations: PublicMilestoneObservation[];
   journalEntries: PublicJournalEntry[];
+  books?: PublicBook[];
 }
 
