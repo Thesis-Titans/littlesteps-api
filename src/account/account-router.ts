@@ -15,12 +15,14 @@ import {
   setJournalStore
 } from "../journal/journal-router.js";
 export { getJournalStore, setJournalStore };
+import { getBooksStore } from "../books/books-router.js";
 import type {
   AccountExport,
   PublicCaregiverProfile,
   PublicJournalEntry,
   StoredJournalEntry
 } from "./types.js";
+import type { PublicBook, StoredBook } from "../books/types.js";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -60,6 +62,7 @@ export async function deleteChildWithRecords(uid: string, childId: string): Prom
   await getPlansStore().deleteAllForChild?.(uid, childId);
   await getMilestonesStore().deleteAllForChild?.(uid, childId);
   await getJournalStore().deleteAllForChild?.(uid, childId);
+  await getBooksStore().deleteAllForChild?.(uid, childId);
   return true;
 }
 
@@ -91,6 +94,11 @@ function toPublicObservation(obs: StoredMilestoneObservation): PublicMilestoneOb
 
 function toPublicJournalEntry(entry: StoredJournalEntry): PublicJournalEntry {
   const { caregiverId: _, ...rest } = entry;
+  return rest;
+}
+
+function toPublicBook(book: StoredBook): PublicBook {
+  const { caregiverId: _, ...rest } = book;
   return rest;
 }
 
@@ -151,16 +159,19 @@ accountRouter.get("/export", async (request, response) => {
   const plans: PublicPlan[] = [];
   const observations: PublicMilestoneObservation[] = [];
   const journalEntries: PublicJournalEntry[] = [];
+  const books: PublicBook[] = [];
 
   for (const child of storedChildren) {
-    const [childPlans, childObs, childJournal] = await Promise.all([
+    const [childPlans, childObs, childJournal, childBooks] = await Promise.all([
       getPlansStore().list(uid, child.id),
       getMilestonesStore().list(uid, child.id),
-      getJournalStore().list(uid, child.id)
+      getJournalStore().list(uid, child.id),
+      getBooksStore().list(uid, child.id)
     ]);
     plans.push(...childPlans.map(toPublicPlan));
     observations.push(...childObs.map(toPublicObservation));
     journalEntries.push(...childJournal.map(toPublicJournalEntry));
+    books.push(...childBooks.map(toPublicBook));
   }
 
   const payload: AccountExport = {
@@ -169,7 +180,8 @@ accountRouter.get("/export", async (request, response) => {
     children,
     plans,
     observations,
-    journalEntries
+    journalEntries,
+    ...(books.length > 0 ? { books } : {})
   };
 
   response.setHeader("Cache-Control", "no-store");

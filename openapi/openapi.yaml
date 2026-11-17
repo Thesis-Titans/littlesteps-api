@@ -1180,6 +1180,98 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
 
 
+  /api/v1/children/{childId}/books:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+    get:
+      operationId: listSavedBooks
+      summary: List saved storybooks on child's family bookshelf
+      description: >-
+        Returns all storybooks saved to the verified caregiver's child bookshelf,
+        ordered by creation timestamp descending.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of saved books successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedBooksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: saveBookToBookshelf
+      summary: Save a storybook to the child's family bookshelf
+      description: >-
+        Saves or updates a picture book metadata record on the child's bookshelf.
+        Operation is idempotent using the book's identifier.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveBookRequest'
+      responses:
+        '201':
+          description: Book successfully saved to bookshelf
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedBook'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/children/{childId}/books/{bookId}:
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        description: Server-generated child UUIDv4.
+        schema:
+          $ref: '#/components/schemas/ChildId'
+      - name: bookId
+        in: path
+        required: true
+        description: Open Library work ID or book identifier.
+        schema:
+          $ref: '#/components/schemas/BookId'
+    delete:
+      operationId: removeBookFromBookshelf
+      summary: Remove a storybook from the child's family bookshelf
+      description: Permanently deletes a saved book from the child's bookshelf subcollection.
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Book successfully removed from bookshelf
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChildNotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
 
   /api/v1/children/{childId}/summary/weekly:
     parameters:
@@ -1645,6 +1737,108 @@ components:
             license:
               type: string
               example: "Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights"
+
+    BookId:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: '^[a-zA-Z0-9_-]+$'
+      description: Open Library work ID or book slug identifier.
+      example: OL45804W
+
+    SaveBookRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+      properties:
+        id:
+          $ref: '#/components/schemas/BookId'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Book title
+          example: Where the Wild Things Are
+        authors:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          default: []
+          example: ["Maurice Sendak"]
+        coverUrl:
+          type: string
+          format: uri
+          pattern: '^https://'
+          description: Secure HTTPS URL to cover image
+          example: https://covers.openlibrary.org/b/id/12345-M.jpg
+        subjects:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          default: []
+          example: ["Bedtime", "Monsters", "Picture books"]
+
+    SavedBook:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - childId
+        - title
+        - authors
+        - subjects
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/BookId'
+        childId:
+          $ref: '#/components/schemas/ChildId'
+        title:
+          type: string
+          example: Where the Wild Things Are
+        authors:
+          type: array
+          items:
+            type: string
+          example: ["Maurice Sendak"]
+        coverUrl:
+          type: string
+          format: uri
+          example: https://covers.openlibrary.org/b/id/12345-M.jpg
+        subjects:
+          type: array
+          items:
+            type: string
+          example: ["Bedtime", "Monsters"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SavedBooksResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - books
+        - totalCount
+      properties:
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/SavedBook'
+        totalCount:
+          type: integer
+          minimum: 0
+          example: 1
 
     WeatherResponse:
       type: object
