@@ -550,6 +550,45 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/ai/adapt:
+    post:
+      operationId: adaptActivity
+      summary: Adapt a catalog activity for caregiver constraints
+      description: >-
+        Adapts a reviewed catalog activity based on parent constraints: shorter duration, easier demonstration, challenge variation, or missing material substitution. Bounded by non-diagnostic safeguards and safe fallback.
+      x-requirement: FR-06
+      x-adr: ADR-012
+      x-implementation-status: implemented
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdaptActivityRequest'
+      responses:
+        '200':
+          description: Adapted activity suggestion with provenance
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdaptActivityResponse'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/children:
     post:
       operationId: createChild
@@ -1547,6 +1586,80 @@ components:
           $ref: '#/components/schemas/StoryActivitySuggestion'
         provenance:
           $ref: '#/components/schemas/StoryActivityProvenance'
+    AdaptActivityRequest:
+      type: object
+      additionalProperties: false
+      required: [activityId, adjustment]
+      properties:
+        activityId:
+          type: string
+          minLength: 1
+          maxLength: 100
+        adjustment:
+          type: string
+          enum: [shorter, easier, harder, missing_material]
+        missingMaterial:
+          type: string
+          maxLength: 60
+        ageBand:
+          $ref: '#/components/schemas/AgeBand'
+    AdaptActivityResponse:
+      type: object
+      additionalProperties: false
+      required: [adapted, source, tier, provenance]
+      properties:
+        adapted:
+          type: object
+          additionalProperties: false
+          required:
+            - activityId
+            - originalTitle
+            - adaptedTitle
+            - adjustment
+            - instructions
+            - materials
+            - safetyNotice
+            - explanation
+          properties:
+            activityId:
+              type: string
+            originalTitle:
+              type: string
+            adaptedTitle:
+              type: string
+            adjustment:
+              type: string
+              enum: [shorter, easier, harder, missing_material]
+            instructions:
+              type: array
+              items:
+                type: string
+            materials:
+              type: array
+              items:
+                type: string
+            safetyNotice:
+              type: string
+            explanation:
+              type: string
+        source:
+          type: string
+          enum: [ai, fallback]
+        tier:
+          type: integer
+          enum: [1, 2]
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [badge, disclaimer, model]
+          properties:
+            badge:
+              type: [string, 'null']
+              enum: [Suggested by AI, null]
+            disclaimer:
+              type: string
+            model:
+              type: [string, 'null']
     ErrorEnvelope:
       type: object
       additionalProperties: false

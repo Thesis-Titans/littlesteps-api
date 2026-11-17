@@ -80,3 +80,37 @@ export interface StoryActivityResponse {
 
 export const DISCLAIMER = "Observational play suggestion only. Not developmental assessment.";
 export const GUIDANCE = "You know your child best. Change it as you like, and stay close while you play.";
+
+// Activity Adaptation (Issue #61, ADR-012)
+export const ActivityAdjustmentSchema = z.enum(["shorter", "easier", "harder", "missing_material"]);
+export type ActivityAdjustment = z.infer<typeof ActivityAdjustmentSchema>;
+
+export const AdaptActivityRequestSchema = z.strictObject({
+  activityId: z.string().trim().min(1).max(100),
+  adjustment: ActivityAdjustmentSchema,
+  missingMaterial: z.string().trim().max(60).optional(),
+  ageBand: AgeBandSchema.optional()
+});
+export type AdaptActivityRequest = z.infer<typeof AdaptActivityRequestSchema>;
+
+export interface AdaptedActivitySuggestion {
+  activityId: string;
+  originalTitle: string;
+  adaptedTitle: string;
+  adjustment: ActivityAdjustment;
+  instructions: string[];
+  materials: string[];
+  safetyNotice: string;
+  explanation: string;
+}
+
+export interface AdaptActivityResponse {
+  adapted: AdaptedActivitySuggestion;
+  source: "ai" | "fallback";
+  tier: 1 | 2;
+  provenance: {
+    badge: "Suggested by AI" | null;
+    disclaimer: string;
+    model: string | null;
+  };
+}

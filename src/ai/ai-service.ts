@@ -1,13 +1,15 @@
 import { getApprovedActivities } from "../catalog/catalog-service.js";
 import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
 import { cleanMaterials } from "./sanitize.js";
-import { buildPrompt, buildStoryPrompt } from "./prompt.js";
+import { buildAdaptPrompt, buildPrompt, buildStoryPrompt } from "./prompt.js";
 import { filterEligible, rankActivities, FALLBACK_WHY } from "./fallback.js";
-import { validateOutput, validateStoryOutput } from "./validate-output.js";
+import { validateAdaptOutput, validateOutput, validateStoryOutput } from "./validate-output.js";
 import type { AiProvider } from "./providers/provider.js";
 import {
   DISCLAIMER,
   GUIDANCE,
+  type AdaptActivityRequest,
+  type AdaptActivityResponse,
   type RecommendationRequest,
   type RecommendationResponse,
   type StoryActivityRequest,
@@ -195,6 +197,131 @@ export async function suggestStoryActivity(
       source: "catalog",
       badge: null,
       disclaimer: DISCLAIMER
+    }
+  };
+}
+
+/**
+ * Adapts an activity based on parent constraints (Issue #61, ADR-012).
+ * Tier 1: LLM provider (Gemini).
+ * Tier 2: Safe heuristic adaptation from the reviewed catalog activity.
+ */
+export async function adaptActivity(
+  request: AdaptActivityRequest,
+  provider: AiProvider | null,
+  timeoutMs = PROVIDER_TIMEOUT_MS
+): Promise<AdaptActivityResponse | null> {
+  const startedAt = Date.now();
+  const approved = getApprovedActivities();
+  const pool = approved.length > 0 ? approved : SYNTHETIC_ACTIVITIES;
+  const activity = pool.find((a) => a.id === request.activityId);
+
+  if (!activity) {
+    return null;
+  }
+
+  const instructions = Array.isArray(activity.instructions) ? activity.instructions : [String(activity.instructions)];
+  const materials = Array.isArray(activity.materials) ? activity.materials : [];
+
+  if (provider) {
+    try {
+      const prompt = buildAdaptPrompt({
+        activityTitle: activity.title,
+        domain: activity.domain,
+        instructions,
+        materials,
+        ageBand: request.ageBand ?? activity.ageBand,
+        adjustment: request.adjustment,
+        missingMaterial: request.missingMaterial
+      });
+      const reply = await callWithTimeout(provider, prompt, timeoutMs);
+      const validated = validateAdaptOutput(reply);
+      if (validated) {
+        logEvent("ai.adapt_provider_ok", 1, startedAt);
+        return {
+          adapted: {
+            activityId: activity.id,
+            originalTitle: activity.title,
+            adaptedTitle: validated.adaptedTitle,
+            adjustment: request.adjustment,
+            instructions: validated.instructions,
+            materials: validated.materials,
+            safetyNotice: validated.safetyNotice,
+            explanation: validated.explanation
+          },
+          source: "ai",
+          tier: 1,
+          provenance: {
+            badge: "Suggested by AI",
+            disclaimer: DISCLAIMER,
+            model: provider.model
+          }
+        };
+      }
+      logEvent("ai.adapt_invalid_output", 2, startedAt);
+    } catch (error) {
+      logEvent("ai.adapt_provider_failed", 2, startedAt, error instanceof Error ? error.name : "Unknown");
+    }
+  }
+
+  // Safe Tier 2 deterministic fallback
+  logEvent("ai.adapt_fallback", 2, startedAt);
+  let adaptedTitle = `Adapted: ${activity.title}`;
+  let adaptedInstructions = [...instructions];
+  let adaptedMaterials = [...materials];
+  let explanation = "Adapted for home play while maintaining developmental focus.";
+
+  switch (request.adjustment) {
+    case "shorter":
+      adaptedTitle = `Quick: ${activity.title}`;
+      adaptedInstructions = instructions.slice(0, Math.min(2, instructions.length));
+      explanation = "Condensed into a quick 5-10 minute exploratory session.";
+      break;
+    case "easier":
+      adaptedTitle = `Gentle: ${activity.title}`;
+      adaptedInstructions = [`Demonstrate ${activity.title.toLowerCase()} gently first before inviting your child to try.`, ...instructions.slice(0, 2)];
+      explanation = "Simplified with hands-on caregiver demonstration.";
+      break;
+    case "harder":
+      adaptedTitle = `Challenge: ${activity.title}`;
+      adaptedInstructions = [...instructions, "Encourage your toddler to explore variations independently or count each step!"];
+      explanation = "Added an open-ended challenge step to extend problem solving.";
+      break;
+    case "missing_material": {
+      const missing = request.missingMaterial?.trim();
+      adaptedTitle = `Home Play: ${activity.title}`;
+      adaptedMaterials = materials
+        .filter((m) => !missing || !m.toLowerCase().includes(missing.toLowerCase()))
+        .concat(["Safe everyday household alternative"]);
+      if (missing) {
+        adaptedInstructions = instructions.map((step) =>
+          step.replace(new RegExp(missing, "gi"), "household alternative")
+        );
+        explanation = `Substituted ${missing} with everyday safe household items.`;
+      } else {
+        explanation = "Adapted to use safe household alternatives instead of missing items.";
+      }
+      break;
+    }
+  }
+
+  return {
+    adapted: {
+      activityId: activity.id,
+      originalTitle: activity.title,
+      adaptedTitle,
+      adjustment: request.adjustment,
+      instructions: adaptedInstructions,
+      materials: adaptedMaterials,
+      safetyNotice: activity.limitations ?? "Ensure attentive adult supervision during play.",
+      explanation
+    },
+    source: "fallback",
+    tier: 2,
+    provenance: {
+      badge: null,
+      disclaimer: DISCLAIMER,
+      model: null
     }
   };
 }
