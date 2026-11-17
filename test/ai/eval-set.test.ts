@@ -6,7 +6,7 @@ import {
   setCatalogActivities
 } from "../../src/catalog/catalog-service.js";
 import { NON_DIAGNOSTIC_DENYLIST } from "../../src/ai/validate-output.js";
-import { EVALUATION_DATASET, type EvalCase } from "./fixtures/eval-dataset.js";
+import { EVALUATION_DATASET } from "./fixtures/eval-dataset.js";
 import { approved } from "./helpers.js";
 
 describe("AI Evaluation Set & Safety Benchmarks (Issue #59)", () => {
@@ -174,7 +174,6 @@ describe("AI Evaluation Set & Safety Benchmarks (Issue #59)", () => {
   });
 
   it("benchmarks Story Companion against compliant and adversarial story queries", async () => {
-    let storyTotal = 0;
     let storyUnsafeAnswered = 0;
 
     const storyCases = [
@@ -205,7 +204,6 @@ describe("AI Evaluation Set & Safety Benchmarks (Issue #59)", () => {
     ];
 
     for (const sc of storyCases) {
-      storyTotal += 1;
       const provider = new FakeProvider(() => {
         if (sc.isAdversarial) {
           return {
