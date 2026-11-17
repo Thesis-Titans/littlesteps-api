@@ -1,7 +1,11 @@
 import { Router, type Request, type Response } from "express";
-import { recommend, suggestStoryActivity } from "./ai-service.js";
+import { adaptActivity, recommend, suggestStoryActivity } from "./ai-service.js";
 import type { AiProvider } from "./providers/provider.js";
-import { RecommendationRequestSchema, StoryActivityRequestSchema } from "./types.js";
+import {
+  AdaptActivityRequestSchema,
+  RecommendationRequestSchema,
+  StoryActivityRequestSchema
+} from "./types.js";
 
 let provider: AiProvider | null = null;
 
@@ -40,6 +44,26 @@ aiRouter.post("/story-activity", async (request: Request, response: Response) =>
   }
   response.setHeader("Cache-Control", "no-store");
   response.status(200).json(await suggestStoryActivity(parsed.data, provider));
+});
+
+aiRouter.post("/adapt", async (request: Request, response: Response) => {
+  const parsed = AdaptActivityRequestSchema.safeParse(request.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.flatMap((issue) =>
+      issue.code === "unrecognized_keys"
+        ? issue.keys.map((key) => ({ field: key, issue: "Unknown field" }))
+        : [{ field: issue.path.join("."), issue: issue.message }]
+    );
+    response.status(400).json({ error: { code: "INVALID_INPUT", message: "Invalid activity adaptation request", details } });
+    return;
+  }
+  response.setHeader("Cache-Control", "no-store");
+  const result = await adaptActivity(parsed.data, provider);
+  if (!result) {
+    response.status(404).json({ error: { code: "RESOURCE_NOT_FOUND", message: `Activity '${parsed.data.activityId}' was not found in catalog` } });
+    return;
+  }
+  response.status(200).json(result);
 });
 
 export { aiRouter };

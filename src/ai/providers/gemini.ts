@@ -55,7 +55,22 @@ export const STORY_RESPONSE_SCHEMA = {
   required: ["title", "domain", "instructions", "safetyNotice"]
 };
 
+export const ADAPT_RESPONSE_SCHEMA = {
+  type: t("OBJECT"),
+  properties: {
+    adaptedTitle: { type: t("STRING") },
+    instructions: { type: t("ARRAY"), items: { type: t("STRING") } },
+    materials: { type: t("ARRAY"), items: { type: t("STRING") } },
+    safetyNotice: { type: t("STRING") },
+    explanation: { type: t("STRING") }
+  },
+  required: ["adaptedTitle", "instructions", "materials", "safetyNotice", "explanation"]
+};
+
 export function resolveResponseSchema(prompt: string): Record<string, unknown> {
+  if (prompt.startsWith("You adapt a known early-childhood play activity")) {
+    return ADAPT_RESPONSE_SCHEMA;
+  }
   if (
     prompt.startsWith("You suggest one companion play idea") ||
     prompt.includes("You are an early-childhood play specialist") ||

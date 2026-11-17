@@ -79,6 +79,39 @@ export function validateStoryOutput(reply: unknown): StoryPick | null {
   return { title, domain, instructions, safetyNotice };
 }
 
+const AdaptReplySchema = z.object({
+  adaptedTitle: z.string().trim().min(1).max(60).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+  instructions: z.array(z.string().trim().min(1).max(200).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w))).min(1).max(5),
+  materials: z.array(z.string().trim().min(1).max(60).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w))).max(10),
+  safetyNotice: z.string().trim().min(1).max(140).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w)),
+  explanation: z.string().trim().min(1).max(200).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w))
+});
+
+export interface AdaptPick {
+  adaptedTitle: string;
+  instructions: string[];
+  materials: string[];
+  safetyNotice: string;
+  explanation: string;
+}
+
+/** Validates LLM activity adaptation; returns null if any validation check fails or denylist is hit. */
+export function validateAdaptOutput(reply: unknown): AdaptPick | null {
+  const parsed = AdaptReplySchema.safeParse(reply);
+  if (!parsed.success) return null;
+  const { adaptedTitle, instructions, materials, safetyNotice, explanation } = parsed.data;
+  if (
+    hitsDenylist(adaptedTitle) ||
+    hitsDenylist(safetyNotice) ||
+    hitsDenylist(explanation) ||
+    instructions.some((step) => hitsDenylist(step)) ||
+    materials.some((m) => hitsDenylist(m))
+  ) {
+    return null;
+  }
+  return { adaptedTitle, instructions, materials, safetyNotice, explanation };
+}
+
 /** Returns the picks, or null when any part of the reply is unacceptable (the whole reply is rejected). */
 export function validateOutput(reply: unknown, candidateIds: ReadonlySet<string>, count: number): Pick[] | null {
   const parsed = ReplySchema.safeParse(reply);
