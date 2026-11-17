@@ -30,6 +30,8 @@ import { createMemoryChildrenStore } from "../src/children/children-store.js";
 import type { StoredChild } from "../src/children/types.js";
 import { setMilestonesStore } from "../src/milestones/milestones-router.js";
 import { createMemoryMilestonesStore } from "../src/milestones/milestones-store.js";
+import { setBooksStore } from "../src/books/books-router.js";
+import { createInMemoryBooksStore } from "../src/books/books-store.js";
 
 const AUTH_A = "Bearer uid-a";
 const AUTH_B = "Bearer uid-b";
@@ -60,6 +62,7 @@ beforeEach(async () => {
   setPlansStore(plansStore);
   setMilestonesStore(milestonesStore);
   setJournalStore(journalStore);
+  setBooksStore(createInMemoryBooksStore());
 
   logs = [];
   for (const method of ["log", "info", "warn", "error"] as const) {
