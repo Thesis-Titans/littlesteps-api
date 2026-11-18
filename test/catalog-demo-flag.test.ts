@@ -16,6 +16,7 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
 
   afterEach(() => {
     delete process.env.SERVE_SYNTHETIC_CATALOG;
+    delete process.env.DEMO_ALLOW_SYNTHETIC_AI;
     vi.restoreAllMocks();
   });
 
@@ -48,8 +49,8 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
     );
 
     const result = getCatalogActivities({});
-    expect(result.total).toBe(7);
-    expect(result.items.length).toBe(7);
+    expect(result.total).toBe(14);
+    expect(result.items.length).toBe(14);
 
     // Every item must be synthetic_fixture — never reviewed_approved
     for (const item of result.items) {
@@ -68,6 +69,16 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
 
     // The AI helper only reads approved items — must remain empty
     expect(getApprovedActivities()).toEqual([]);
+  });
+
+  it("getApprovedActivities() returns loaded activities when DEMO_ALLOW_SYNTHETIC_AI is true", async () => {
+    process.env.SERVE_SYNTHETIC_CATALOG = "true";
+    process.env.DEMO_ALLOW_SYNTHETIC_AI = "true";
+    const { getApprovedActivities } = await import(
+      "../src/catalog/catalog-service.js"
+    );
+
+    expect(getApprovedActivities().length).toBe(14);
   });
 });
 

@@ -69,8 +69,13 @@ export function setCatalogActivities(items: CatalogActivity[]): void {
   activitiesStore = validateActivities(items);
 }
 
-/** Only reviewed_approved items; the sole read path other modules (such as AI suggestions) may use. */
+/** Only reviewed_approved items; the sole read path other modules (such as AI suggestions) may use.
+ * In local demo/development mode when DEMO_ALLOW_SYNTHETIC_AI=true, loaded activities may be evaluated by Gemini.
+ */
 export function getApprovedActivities(): CatalogActivity[] {
+  if (process.env.DEMO_ALLOW_SYNTHETIC_AI === "true") {
+    return activitiesStore;
+  }
   return activitiesStore.filter((item) => item.status === "reviewed_approved");
 }
 
