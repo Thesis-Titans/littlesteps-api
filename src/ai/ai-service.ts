@@ -112,14 +112,14 @@ export async function recommend(
 /**
  * Deterministically finds a matching catalog activity based on ageBand and book subjects.
  */
-export function findStoryFallbackActivity(ageBand: string, subjects: string[]): StoryActivitySuggestion {
+export function findStoryFallbackActivity(ageBand: string, subjects?: string[]): StoryActivitySuggestion {
   const approved = getApprovedActivities();
   const pool = approved.length > 0 ? approved : SYNTHETIC_ACTIVITIES;
 
   const eligible = pool.filter((a) => a.ageBand === ageBand);
   const candidatePool = eligible.length > 0 ? eligible : pool;
 
-  const subjectWords = subjects.map((s) => s.toLowerCase());
+  const subjectWords = (subjects ?? []).map((s) => s.toLowerCase());
   let matched = candidatePool.find((a) => {
     const text = `${a.title} ${a.domain}`.toLowerCase();
     return subjectWords.some((w) => text.includes(w));

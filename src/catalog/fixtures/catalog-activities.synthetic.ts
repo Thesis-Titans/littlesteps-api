@@ -140,6 +140,146 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource: "Synthetic engineering fixture; no external source",
     status: "synthetic_fixture",
     limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-008",
+    title: "Stack the Plastic Cups",
+    type: "activity",
+    language: "en",
+    setting: "indoor",
+    ageBand: "12-23m",
+    domain: "cognitive",
+    durationMinutes: 10,
+    durationEstimate: "10 mins",
+    materials: ["plastic cups", "wooden spoons"],
+    instructions: [
+      "Set two or three sturdy plastic cups on the floor.",
+      "Show how one cup nests inside another or stacks on top.",
+      "Let your toddler explore knocking the tower down and rebuilding."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-009",
+    title: "Naming Familiar Objects",
+    type: "game",
+    language: "en",
+    setting: "either",
+    ageBand: "12-23m",
+    domain: "language",
+    durationMinutes: 10,
+    durationEstimate: "10 mins",
+    materials: ["household toys", "spoon", "cup"],
+    instructions: [
+      "Gather three familiar everyday items like a toy animal, cup, and spoon.",
+      "Point to each item, name it clearly, and pause for toddler's reaction.",
+      "Ask 'Where is the cup?' and celebrate whichever way they reach or point."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-010",
+    title: "Water Splash Basin",
+    type: "activity",
+    language: "en",
+    setting: "indoor",
+    ageBand: "12-23m",
+    domain: "socioEmotional",
+    durationMinutes: 15,
+    durationEstimate: "10-15 mins",
+    materials: ["water basin", "plastic cups", "sponge"],
+    instructions: [
+      "Place a shallow basin of warm water on a towel on the floor.",
+      "Provide clean plastic cups and a clean sponge for dipping and squeezing.",
+      "Stay right beside your toddler with active supervision as they splash."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-011",
+    title: "Gentle Rattle Tracking",
+    type: "game",
+    language: "en",
+    setting: "indoor",
+    ageBand: "0-5m",
+    domain: "cognitive",
+    durationMinutes: 10,
+    durationEstimate: "5-10 mins",
+    materials: ["soft rattle"],
+    instructions: [
+      "Hold a colorful, soft rattle about ten inches from baby's eyes.",
+      "Move it slowly from side to side in an arc.",
+      "Pause when baby follows the sound and movement with their eyes."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-012",
+    title: "Peekaboo Behind the Cloth",
+    type: "game",
+    language: "en",
+    setting: "either",
+    ageBand: "6-11m",
+    domain: "socioEmotional",
+    durationMinutes: 10,
+    durationEstimate: "5-10 mins",
+    materials: ["lightweight cotton cloth"],
+    instructions: [
+      "Hold a lightweight cloth in front of your face with a warm smile.",
+      "Lower the cloth and say 'peekaboo!' with an upbeat, joyful voice.",
+      "Let baby pull down the cloth when they reach forward."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-013",
+    title: "Nature Color Hunt",
+    type: "activity",
+    language: "en",
+    setting: "outdoor",
+    ageBand: "24-35m",
+    domain: "cognitive",
+    durationMinutes: 20,
+    durationEstimate: "15-20 mins",
+    materials: ["small basket or bucket"],
+    instructions: [
+      "Take a small bucket outside for a short backyard stroll.",
+      "Look together for green leaves, gray stones, or yellow flowers.",
+      "Place one of each in the bucket and describe how they look and feel."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+  },
+  {
+    id: "act-synth-014",
+    title: "Cardboard Box Tunnel",
+    type: "activity",
+    language: "en",
+    setting: "indoor",
+    ageBand: "24-35m",
+    domain: "motor",
+    durationMinutes: 20,
+    durationEstimate: "15-20 mins",
+    materials: ["large cardboard box", "soft blanket"],
+    instructions: [
+      "Open both ends of a clean delivery box to create a mini crawl tunnel.",
+      "Place a soft blanket inside or at the exit on a carpeted floor.",
+      "Call your toddler's name from the other side and cheer as they crawl through."
+    ],
+    provenanceSource: "Synthetic engineering fixture; no external source",
+    status: "synthetic_fixture",
+    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
   }
 ];
 

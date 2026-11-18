@@ -195,4 +195,16 @@ describe("POST /api/v1/ai/story-activity", () => {
     expect(res.provenance.badge).toBeNull();
     expect(res.suggestion.title).toBeTruthy();
   });
+
+  it("handles fallback gracefully when subjects is undefined", async () => {
+    const requestWithoutSubjects = {
+      bookTitle: "Goodnight Moon",
+      ageBand: "24-35m" as const
+    };
+    const res = await suggestStoryActivity(requestWithoutSubjects, null);
+    expect(res.provenance.tier).toBe(3);
+    expect(res.provenance.source).toBe("catalog");
+    expect(res.provenance.badge).toBeNull();
+    expect(res.suggestion.title).toBeTruthy();
+  });
 });
