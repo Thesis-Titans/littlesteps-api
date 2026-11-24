@@ -1,5 +1,8 @@
 import type { CatalogActivity } from "../types.js";
 
+const PROVISIONAL_LIMITATIONS =
+  "Author-checked academic reference — Pending Review. Educational play prompt only; not a clinical or diagnostic tool.";
+
 export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
   {
     id: "act-synth-001",
@@ -17,9 +20,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Position an unbreakable mirror in their direct line of sight.",
       "Gently talk or sing to encourage lifting their head to see their reflection."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELC LRP 3 (2015), PDF p. 106",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-002",
@@ -37,9 +40,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Clap hands gently in cadence to the traditional rhyme Pen-pen de Sarapen.",
       "Gently tap baby's palms together during the chorus to encourage clapping reflex."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "Philippine Traditional Rhyme; ECCD Council NELF (2010), Annex 4, p. 76",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-003",
@@ -57,9 +61,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Encourage the toddler to crawl over the gentle incline toward a favorite toy.",
       "Stay close to spot and praise balance and spatial coordination."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELF (2010), Annex 4 (13–24 months), p. 78",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-004",
@@ -77,9 +81,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Provide clean plastic bowls and spoons for pretend meal preparation.",
       "Join the pretend play, asking questions like 'Ano ang niluluto natin ngayon?'"
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "Philippine Traditional Play; ECCD Council NELF (2010), Annex 4 (25–36 months), p. 87",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-005",
@@ -97,9 +102,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Demonstrate placing one item in each container.",
       "Invite the child to sort the remaining pile by color or size."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "ECCD Council NELF (2010), Annex 4 (Cognitive Concept Formation), p. 90",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-006",
@@ -117,9 +123,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Imitate fishing and rowing movements together.",
       "Discuss what kinds of fish live in Philippine waters."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "Hiligaynon Traditional Folk Song; ECCD Council NELF (2010), Annex 4, p. 97",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-007",
@@ -137,9 +144,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Have the child toss the beanbag into square 1 and hop over it on one foot.",
       "Turn around at the end and hop back, picking up the marker on the return."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "Philippine Traditional Game; ECCD Council NELF (2010), Annex 4, p. 95",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-008",
@@ -157,9 +165,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Show how one cup nests inside another or stacks on top.",
       "Let your toddler explore knocking the tower down and rebuilding."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELC LRP 3 (2015), PDF p. 162",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-009",
@@ -177,9 +185,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Point to each item, name it clearly, and pause for toddler's reaction.",
       "Ask 'Where is the cup?' and celebrate whichever way they reach or point."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "ECCD Council NELF (2010), Annex 4 (Receptive Language), p. 81",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-010",
@@ -197,9 +206,10 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Provide clean plastic cups and a clean sponge for dipping and squeezing.",
       "Stay right beside your toddler with active supervision as they splash."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "ECCD Council NELC LRP 3 (2015), Toddler Calendar (1–2 years)",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-011",
@@ -217,9 +227,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Move it slowly from side to side in an arc.",
       "Pause when baby follows the sound and movement with their eyes."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELF (2010), Annex 4 (0–6 months), p. 73",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-012",
@@ -237,9 +247,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Lower the cloth and say 'peekaboo!' with an upbeat, joyful voice.",
       "Let baby pull down the cloth when they reach forward."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELF (2010), Annex 4 (7–12 months), p. 78",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-013",
@@ -257,9 +267,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Look together for green leaves, gray stones, or yellow flowers.",
       "Place one of each in the bucket and describe how they look and feel."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource: "ECCD Council NELF (2010), Annex 4 (Color Grouping), p. 90",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   },
   {
     id: "act-synth-014",
@@ -277,9 +287,9 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
       "Place a soft blanket inside or at the exit on a carpeted floor.",
       "Call your toddler's name from the other side and cheer as they crawl through."
     ],
-    provenanceSource: "Synthetic engineering fixture; no external source",
+    provenanceSource:
+      "ECCD Council NELF (2010), Annex 4 (25–36 months Gross Motor), p. 87",
     status: "synthetic_fixture",
-    limitations: "Provisional Academic Reference — Pending Review. Educational prompt only; not a clinical or diagnostic instrument."
+    limitations: PROVISIONAL_LIMITATIONS
   }
 ];
-

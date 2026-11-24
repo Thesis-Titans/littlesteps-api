@@ -55,9 +55,7 @@ describe("SERVE_SYNTHETIC_CATALOG env flag", () => {
     // Every item must be synthetic_fixture — never reviewed_approved
     for (const item of result.items) {
       expect(item.status).toBe("synthetic_fixture");
-      expect(item.provenanceSource).toBe(
-        "Synthetic engineering fixture; no external source"
-      );
+      expect(item.provenanceSource).toMatch(/ECCD Council/);
     }
   });
 
