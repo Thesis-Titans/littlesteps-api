@@ -87,9 +87,8 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
         expect(item).toHaveProperty("status");
         expect(item).toHaveProperty("limitations");
 
-        // Fix #1 enforcement: synthetic fixtures must never appear as approved
         expect(item.status).toBe("synthetic_fixture");
-        expect(item.limitations).toContain("Pending Review");
+        expect(item.limitations).toContain("not a clinical or diagnostic tool");
       }
     });
 

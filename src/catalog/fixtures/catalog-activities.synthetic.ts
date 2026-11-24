@@ -1,7 +1,7 @@
 import type { CatalogActivity } from "../types.js";
 
-const PROVISIONAL_LIMITATIONS =
-  "Author-checked academic reference — Pending Review. Educational play prompt only; not a clinical or diagnostic tool.";
+const ACTIVITY_LIMITATIONS =
+  "Educational play prompt only; not a clinical or diagnostic tool.";
 
 export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
   {
@@ -22,7 +22,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELC LRP 3 (2015), PDF p. 106",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-002",
@@ -43,7 +43,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "Philippine Traditional Rhyme; ECCD Council NELF (2010), Annex 4, p. 76",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-003",
@@ -63,7 +63,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELF (2010), Annex 4 (13–24 months), p. 78",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-004",
@@ -84,7 +84,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "Philippine Traditional Play; ECCD Council NELF (2010), Annex 4 (25–36 months), p. 87",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-005",
@@ -105,7 +105,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "ECCD Council NELF (2010), Annex 4 (Cognitive Concept Formation), p. 90",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-006",
@@ -126,7 +126,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "Hiligaynon Traditional Folk Song; ECCD Council NELF (2010), Annex 4, p. 97",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-007",
@@ -147,7 +147,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "Philippine Traditional Game; ECCD Council NELF (2010), Annex 4, p. 95",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-008",
@@ -167,7 +167,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELC LRP 3 (2015), PDF p. 162",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-009",
@@ -188,7 +188,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "ECCD Council NELF (2010), Annex 4 (Receptive Language), p. 81",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-010",
@@ -209,7 +209,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "ECCD Council NELC LRP 3 (2015), Toddler Calendar (1–2 years)",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-011",
@@ -229,7 +229,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELF (2010), Annex 4 (0–6 months), p. 73",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-012",
@@ -249,7 +249,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELF (2010), Annex 4 (7–12 months), p. 78",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-013",
@@ -269,7 +269,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     ],
     provenanceSource: "ECCD Council NELF (2010), Annex 4 (Color Grouping), p. 90",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   },
   {
     id: "act-synth-014",
@@ -290,6 +290,6 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     provenanceSource:
       "ECCD Council NELF (2010), Annex 4 (25–36 months Gross Motor), p. 87",
     status: "synthetic_fixture",
-    limitations: PROVISIONAL_LIMITATIONS
+    limitations: ACTIVITY_LIMITATIONS
   }
 ];
