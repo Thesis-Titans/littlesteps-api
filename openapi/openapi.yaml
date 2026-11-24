@@ -2370,7 +2370,7 @@ components:
           type: array
           items:
             type: string
-          example: ['act-synth-001', 'act-synth-002']
+          example: ['act-001', 'act-002']
         reflectionPrompt:
           type: string
           example: 'You engaged in shared activities and noted emerging milestones this week. Continuing everyday playful interactions nurtures learning and connection.'

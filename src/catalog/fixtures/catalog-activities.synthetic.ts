@@ -5,7 +5,7 @@ const ACTIVITY_LIMITATIONS =
 
 export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
   {
-    id: "act-synth-001",
+    id: "act-001",
     title: "Tummy Time Mirror Play",
     type: "activity",
     language: "fil",
@@ -25,7 +25,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-002",
+    id: "act-002",
     title: "Pen-pen de Sarapen Rhythm Clap",
     type: "rhyme",
     language: "fil",
@@ -46,7 +46,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-003",
+    id: "act-003",
     title: "Cushion Mountain Crawl",
     type: "activity",
     language: "en",
@@ -66,7 +66,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-004",
+    id: "act-004",
     title: "Bahay-Bahayan Household Role Play",
     type: "game",
     language: "fil",
@@ -87,7 +87,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-005",
+    id: "act-005",
     title: "Household Sorting Challenge",
     type: "activity",
     language: "en",
@@ -108,7 +108,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-006",
+    id: "act-006",
     title: "Si Pilimon Folk Tale & Movement",
     type: "story",
     language: "hil",
@@ -129,7 +129,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-007",
+    id: "act-007",
     title: "Piko Hopscotch Coordination",
     type: "game",
     language: "fil",
@@ -150,7 +150,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-008",
+    id: "act-008",
     title: "Stack the Plastic Cups",
     type: "activity",
     language: "en",
@@ -170,7 +170,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-009",
+    id: "act-009",
     title: "Naming Familiar Objects",
     type: "game",
     language: "en",
@@ -191,7 +191,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-010",
+    id: "act-010",
     title: "Water Splash Basin",
     type: "activity",
     language: "en",
@@ -212,7 +212,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-011",
+    id: "act-011",
     title: "Gentle Rattle Tracking",
     type: "game",
     language: "en",
@@ -232,7 +232,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-012",
+    id: "act-012",
     title: "Peekaboo Behind the Cloth",
     type: "game",
     language: "en",
@@ -252,7 +252,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-013",
+    id: "act-013",
     title: "Nature Color Hunt",
     type: "activity",
     language: "en",
@@ -272,7 +272,7 @@ export const SYNTHETIC_ACTIVITIES: CatalogActivity[] = [
     limitations: ACTIVITY_LIMITATIONS
   },
   {
-    id: "act-synth-014",
+    id: "act-014",
     title: "Cardboard Box Tunnel",
     type: "activity",
     language: "en",

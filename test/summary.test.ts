@@ -175,7 +175,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-1",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001", // motor
+        activityId: "act-001", // motor
         scheduledDate: "2026-11-03",
         status: "completed",
         createdAt: "2026-11-03T08:00:00Z",
@@ -187,7 +187,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-2",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-005", // cognitive
+        activityId: "act-005", // cognitive
         scheduledDate: "2026-11-05",
         status: "completed",
         createdAt: "2026-11-05T08:00:00Z",
@@ -199,7 +199,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-3",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-002", // language
+        activityId: "act-002", // language
         scheduledDate: "2026-11-06",
         status: "planned",
         createdAt: "2026-11-06T08:00:00Z",
@@ -211,7 +211,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-4",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-003",
+        activityId: "act-003",
         scheduledDate: "2026-11-07",
         status: "skipped",
         createdAt: "2026-11-07T08:00:00Z",
@@ -270,19 +270,19 @@ describe("Weekly Summary API (FR-05)", () => {
         socioEmotional: 0
       });
       expect(res.body.topActivityIds).toEqual(
-        expect.arrayContaining(["act-synth-001", "act-synth-005"])
+        expect.arrayContaining(["act-001", "act-005"])
       );
       expect(res.body.reflectionPrompt).toContain("shared activities and noted emerging milestones");
     });
 
     it("ranks topActivityIds by completion frequency up to maximum 3", async () => {
-      // Complete act-synth-001 three times
+      // Complete act-001 three times
       for (let i = 1; i <= 3; i++) {
         await plansStore.create("uid-a", childA.id, {
           id: `plan-mot-${i}`,
           childId: childA.id,
           caregiverId: "uid-a",
-          activityId: "act-synth-001",
+          activityId: "act-001",
           scheduledDate: `2026-11-0${i + 1}`,
           status: "completed",
           createdAt: "2026-11-02T08:00:00Z",
@@ -290,13 +290,13 @@ describe("Weekly Summary API (FR-05)", () => {
         });
       }
 
-      // Complete act-synth-002 twice
+      // Complete act-002 twice
       for (let i = 1; i <= 2; i++) {
         await plansStore.create("uid-a", childA.id, {
           id: `plan-lan-${i}`,
           childId: childA.id,
           caregiverId: "uid-a",
-          activityId: "act-synth-002",
+          activityId: "act-002",
           scheduledDate: `2026-11-0${i + 4}`,
           status: "completed",
           createdAt: "2026-11-02T08:00:00Z",
@@ -304,24 +304,24 @@ describe("Weekly Summary API (FR-05)", () => {
         });
       }
 
-      // Complete act-synth-004 once
+      // Complete act-004 once
       await plansStore.create("uid-a", childA.id, {
         id: "plan-soc-1",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-004",
+        activityId: "act-004",
         scheduledDate: "2026-11-07",
         status: "completed",
         createdAt: "2026-11-02T08:00:00Z",
         updatedAt: "2026-11-02T08:00:00Z"
       });
 
-      // Complete act-synth-005 once (4th distinct activity)
+      // Complete act-005 once (4th distinct activity)
       await plansStore.create("uid-a", childA.id, {
         id: "plan-cog-1",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-005",
+        activityId: "act-005",
         scheduledDate: "2026-11-08",
         status: "completed",
         createdAt: "2026-11-02T08:00:00Z",
@@ -334,10 +334,10 @@ describe("Weekly Summary API (FR-05)", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.topActivityIds).toHaveLength(3);
-      expect(res.body.topActivityIds[0]).toBe("act-synth-001"); // 3 completions
-      expect(res.body.topActivityIds[1]).toBe("act-synth-002"); // 2 completions
-      // 3rd place is either act-synth-004 or act-synth-005 (tie-breaker by alphabetical id: act-synth-004)
-      expect(res.body.topActivityIds[2]).toBe("act-synth-004");
+      expect(res.body.topActivityIds[0]).toBe("act-001"); // 3 completions
+      expect(res.body.topActivityIds[1]).toBe("act-002"); // 2 completions
+      // 3rd place is either act-004 or act-005 (tie-breaker by alphabetical id: act-004)
+      expect(res.body.topActivityIds[2]).toBe("act-004");
     });
   });
 
@@ -350,7 +350,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-before",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001",
+        activityId: "act-001",
         scheduledDate: "2026-11-01",
         status: "completed",
         createdAt: "2026-11-01T08:00:00Z",
@@ -362,7 +362,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-start",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001",
+        activityId: "act-001",
         scheduledDate: "2026-11-02",
         status: "completed",
         createdAt: "2026-11-02T08:00:00Z",
@@ -374,7 +374,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-end",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001",
+        activityId: "act-001",
         scheduledDate: "2026-11-08",
         status: "completed",
         createdAt: "2026-11-08T08:00:00Z",
@@ -386,7 +386,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-after",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001",
+        activityId: "act-001",
         scheduledDate: "2026-11-09",
         status: "completed",
         createdAt: "2026-11-09T08:00:00Z",
@@ -468,7 +468,7 @@ describe("Weekly Summary API (FR-05)", () => {
         id: "plan-1",
         childId: childA.id,
         caregiverId: "uid-a",
-        activityId: "act-synth-001",
+        activityId: "act-001",
         scheduledDate: "2026-11-04",
         status: "completed",
         createdAt: "2026-11-04T08:00:00Z",

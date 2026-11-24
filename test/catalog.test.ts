@@ -145,9 +145,9 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
 
   describe("GET /api/v1/catalog/activities/:id", () => {
     it("returns a specific activity by id", async () => {
-      const res = await request(app).get("/api/v1/catalog/activities/act-synth-001");
+      const res = await request(app).get("/api/v1/catalog/activities/act-001");
       expect(res.status).toBe(200);
-      expect(res.body.id).toBe("act-synth-001");
+      expect(res.body.id).toBe("act-001");
       expect(res.body.title).toBe("Tummy Time Mirror Play");
       expect(res.headers["cache-control"]).toBe("public, max-age=3600");
     });
