@@ -504,6 +504,35 @@ describe("Weekly Summary API (FR-05)", () => {
         expect(bodyText).not.toContain(` ${term} `);
       }
     });
+
+    it("counts completed customActivity plans in domainDistribution", async () => {
+      await plansStore.create("uid-a", childA.id, {
+        id: "plan-custom-1",
+        childId: childA.id,
+        caregiverId: "uid-a",
+        activityId: "custom-shoe-sorting",
+        scheduledDate: "2026-11-04",
+        status: "completed",
+        customActivity: {
+          title: "Shoe Sorting",
+          domain: "socioEmotional",
+          durationMinutes: 12,
+          setting: "indoor",
+          materials: ["shoes"],
+          instructions: ["Match pairs together and celebrate."]
+        },
+        createdAt: "2026-11-04T08:00:00Z",
+        updatedAt: "2026-11-04T08:00:00Z"
+      });
+
+      const res = await request(app)
+        .get(`/api/v1/children/${childA.id}/summary/weekly?week=2026-W45`)
+        .set("Authorization", AUTH_A);
+
+      expect(res.status).toBe(200);
+      expect(res.body.completedActivityCount).toBe(1);
+      expect(res.body.domainDistribution.socioEmotional).toBe(1);
+    });
   });
 });
 

@@ -2024,6 +2024,55 @@ components:
         - skipped
       description: Routine planning status.
 
+    CustomPlanActivity:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - domain
+        - durationMinutes
+        - setting
+        - materials
+        - instructions
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        domain:
+          type: string
+          enum: [cognitive, motor, language, socioEmotional]
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+        setting:
+          type: string
+          enum: [indoor, outdoor, either]
+        materials:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+        instructions:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items:
+            type: string
+            minLength: 1
+            maxLength: 300
+        safetyNotice:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sourceLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+
     CreatePlan:
       type: object
       additionalProperties: false
@@ -2048,6 +2097,8 @@ components:
         feedbackNote:
           type: string
           maxLength: 300
+        customActivity:
+          $ref: '#/components/schemas/CustomPlanActivity'
 
     UpdatePlan:
       type: object
@@ -2108,6 +2159,8 @@ components:
         feedbackNote:
           type: string
           maxLength: 300
+        customActivity:
+          $ref: '#/components/schemas/CustomPlanActivity'
         createdAt:
           type: string
           format: date-time

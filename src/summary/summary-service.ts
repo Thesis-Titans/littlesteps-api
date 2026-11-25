@@ -118,7 +118,7 @@ export function computeWeeklySummary(
   };
 
   for (const plan of completedPlans) {
-    const domain = resolveActivityDomain(plan.activityId);
+    const domain = plan.customActivity?.domain ?? resolveActivityDomain(plan.activityId);
     if (domain && domain in domainDistribution) {
       domainDistribution[domain]++;
     }

@@ -141,7 +141,12 @@ export async function getBooksCatalog(
   }
 
   try {
-    const upstreamUrl = `https://openlibrary.org/subjects/${encodeURIComponent(subject)}.json?limit=${limit}`;
+    const subjectQuery = subject === "picture_books"
+      ? "picture books"
+      : `${subject.replace(/_/g, " ")} picture books`;
+    const upstreamUrl =
+      `https://openlibrary.org/search.json?subject=${encodeURIComponent(subjectQuery)}` +
+      `&language=eng&limit=${limit}&fields=key,title,author_name,cover_i,subject`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
@@ -157,7 +162,15 @@ export async function getBooksCatalog(
     }
 
     const data = await res.json() as {
+      numFound?: number;
       work_count?: number;
+      docs?: Array<{
+        key?: string;
+        title?: string;
+        author_name?: string[];
+        cover_i?: number;
+        subject?: string[];
+      }>;
       works?: Array<{
         key?: string;
         title?: string;
@@ -167,21 +180,33 @@ export async function getBooksCatalog(
       }>;
     };
 
-    const books: BookItem[] = (data.works ?? []).map((work) => {
-      const rawKey = work.key ?? "";
-      const id = rawKey.replace("/works/", "") || rawKey;
-      return {
-        id,
-        title: work.title ?? "Untitled",
-        authors: (work.authors ?? []).map((a) => a.name).filter(Boolean),
-        coverUrl: work.cover_id ? `https://covers.openlibrary.org/b/id/${work.cover_id}-M.jpg` : null,
-        subjects: (work.subject ?? []).slice(0, 5)
-      };
-    });
+    const books: BookItem[] = data.docs
+      ? data.docs.map((doc) => {
+          const rawKey = doc.key ?? "";
+          const id = rawKey.replace("/works/", "") || rawKey;
+          return {
+            id,
+            title: doc.title ?? "Untitled",
+            authors: (doc.author_name ?? []).filter(Boolean),
+            coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg?default=false` : null,
+            subjects: (doc.subject ?? []).slice(0, 5)
+          };
+        })
+      : (data.works ?? []).map((work) => {
+          const rawKey = work.key ?? "";
+          const id = rawKey.replace("/works/", "") || rawKey;
+          return {
+            id,
+            title: work.title ?? "Untitled",
+            authors: (work.authors ?? []).map((a) => a.name).filter(Boolean),
+            coverUrl: work.cover_id ? `https://covers.openlibrary.org/b/id/${work.cover_id}-M.jpg?default=false` : null,
+            subjects: (work.subject ?? []).slice(0, 5)
+          };
+        });
 
     const result: BooksResponse = {
       subject,
-      totalCount: data.work_count ?? books.length,
+      totalCount: data.numFound ?? data.work_count ?? books.length,
       books,
       provenance: {
         // Fix #2: Open Library data licensing; covers and books may carry their own rights.
@@ -225,7 +250,7 @@ export async function searchBooksCatalog(
   }
 
   try {
-    const upstreamUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}`;
+    const upstreamUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&language=eng&limit=${limit}&fields=key,title,author_name,cover_i,subject`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
@@ -258,7 +283,7 @@ export async function searchBooksCatalog(
         id,
         title: doc.title ?? "Untitled",
         authors: doc.author_name ?? [],
-        coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
+        coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg?default=false` : null,
         subjects: (doc.subject ?? []).slice(0, 5)
       };
     });
