@@ -50,7 +50,7 @@ npm run typecheck
 # 6. Build JavaScript bundle
 npm run build
 
-# 7. Run unit and integration test suite (449 passing tests across 23 test files)
+# 7. Run unit, integration, and security regression test suites
 npm test
 
 # 8. Run Firebase Emulator integration suite (Auth & Firestore)
