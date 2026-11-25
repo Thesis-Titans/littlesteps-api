@@ -171,4 +171,48 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
     expect(res.tier).toBe(3);
     expect(res.provenance.reviewed).toBe(true);
   });
+
+  it("blocks shampo typo, cellphone, cap, charger, glass for 0-35m, pluralizes skip reason, and derives Using list from actual card materials", async () => {
+    let seenPrompt = "";
+    const provider = new FakeProvider((prompt) => {
+      seenPrompt = prompt;
+      return {
+        suggestions: [
+          {
+            title: "Fruit Roll and Name",
+            domain: "cognitive",
+            durationMinutes: 10,
+            setting: "indoor",
+            usedMaterials: ["banana", "orange"],
+            instructions: [
+              "Place a whole banana and orange on a soft mat.",
+              "Name each fruit color and roll it gently back and forth."
+            ],
+            safetyNotice: "Keep adult supervision at all times.",
+            whyPicked: "Uses your banana and orange for gentle indoor play."
+          }
+        ]
+      };
+    });
+
+    const res = await recommend(
+      {
+        ageBand: "12-23m",
+        setting: "indoor",
+        timeMinutes: 30,
+        materials: ["banana", "shampo", "cellphone", "cap", "orange", "towel", "charger", "glass"],
+        language: "en",
+        count: 3,
+        allowCustom: true
+      },
+      provider
+    );
+
+    expect(res.source).toBe("ai_custom");
+    expect(res.materialNote).toBe(
+      "Using banana, orange for safe supervised play; skipped shampo, cellphone, cap, charger, glass because they aren't safe for young children to handle or mouth."
+    );
+    expect(res.materialNote).not.toContain("towel");
+    expect(seenPrompt).toContain("\"safeMaterialsAtHome\":[\"banana\",\"orange\",\"towel\"]");
+  });
 });

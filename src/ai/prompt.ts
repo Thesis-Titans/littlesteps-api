@@ -111,8 +111,8 @@ export interface CustomPlayPromptInput {
 
 const CUSTOM_PLAY_INSTRUCTIONS = [
   "You design safe, screen-free early-childhood play ideas for a parent at home using only the safe household items provided.",
-  "Use only items from safeMaterialsAtHome (or no extra items). Never include any item from skippedUnsafeMaterials or any chemicals, soaps, sharp objects, or choking hazards.",
-  "For ages 0-35m, keep activities mouth-safe, gentle, and strictly adult-supervised.",
+  "Use only safe items from safeMaterialsAtHome (or no extra items). Never include any item from skippedUnsafeMaterials, nor any typo or variant of liquids/chemicals (shampoo, soap, detergent, lotion, bleach, sanitizer), fragile/sharp/electrical/screen items (glass, charger, cord, knife, scissors, cellphone, phone, tablet), or small choking hazards (cap, bottle cap, lid, coin, button, marble, bead, battery).",
+  "For ages 0-35m, keep activities strictly screen-free, mouth-safe, gentle, and adult-supervised; never suggest caps, lids, coins, beads, or small loose parts.",
   "Respect setting (indoor, outdoor, or either) and keep each activity duration <= timeMinutes.",
   "Reply with JSON only: {\"suggestions\":[{\"title\":\"<short title <= 60 chars>\",\"domain\":\"cognitive|motor|language|socioEmotional\",\"durationMinutes\":10,\"setting\":\"indoor|outdoor|either\",\"usedMaterials\":[\"<item>\"],\"instructions\":[\"<step 1>\",\"<step 2>\",\"<step 3>\"],\"safetyNotice\":\"<one clear supervision sentence <= 140 chars>\",\"whyPicked\":\"<one plain sentence <= 140 chars>\"}],\"materialNote\":\"<optional calm note <= 180 chars explaining which items were used or skipped>\"}.",
   "Provide 1 to maxPicks suggestions, each with 2 to 4 concrete, playful steps.",

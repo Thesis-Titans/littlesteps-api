@@ -79,6 +79,30 @@ async function callWithTimeout(provider: AiProvider, prompt: string, timeoutMs: 
   }
 }
 
+function buildMaterialSafetyNote(usedMaterials: string[], skippedUnsafe: string[]): string {
+  const skippedList = skippedUnsafe.join(", ");
+  const pronoun = skippedUnsafe.length === 1 ? "it isn't" : "they aren't";
+  return usedMaterials.length > 0
+    ? `Using ${usedMaterials.join(", ")} for safe supervised play; skipped ${skippedList} because ${pronoun} safe for young children to handle or mouth.`
+    : `Skipped ${skippedList} because ${pronoun} safe for young children to handle or mouth. Here are reviewed play ideas for this age instead.`;
+}
+
+function collectActualUsedMaterials(suggestions: Array<{ usedMaterials: string[] }>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of suggestions) {
+    for (const raw of item.usedMaterials) {
+      const trimmed = raw.trim();
+      const key = trimmed.toLowerCase();
+      if (trimmed && !seen.has(key)) {
+        seen.add(key);
+        result.push(trimmed);
+      }
+    }
+  }
+  return result;
+}
+
 export async function recommend(
   request: RecommendationRequest,
   provider: AiProvider | null,
@@ -101,10 +125,7 @@ export async function recommend(
   if (request.allowCustom && materials.length > 0 && !hasCatalogMaterialOverlap(candidates, materials)) {
     const { safeMaterials, skippedUnsafe } = screenMaterialsForSafety(materials, request.ageBand);
     if (skippedUnsafe.length > 0) {
-      const skippedList = skippedUnsafe.join(", ");
-      skippedSafetyNote = safeMaterials.length > 0
-        ? `Using ${safeMaterials.join(", ")} for safe supervised play; skipped ${skippedList} because it isn't safe for young children to handle or mouth.`
-        : `Skipped ${skippedList} because it isn't safe for young children to handle or mouth. Here are reviewed play ideas for this age instead.`;
+      skippedSafetyNote = buildMaterialSafetyNote(safeMaterials, skippedUnsafe);
     }
 
     if (provider && safeMaterials.length > 0) {
@@ -123,7 +144,10 @@ export async function recommend(
         const validated = validateCustomPlayOutput(reply, request.ageBand, request.count);
         if (validated) {
           logEvent("ai.custom_ok", 1, startedAt);
-          const finalNote = skippedSafetyNote ?? validated.materialNote;
+          const actualUsed = collectActualUsedMaterials(validated.suggestions);
+          const finalNote = skippedUnsafe.length > 0
+            ? buildMaterialSafetyNote(actualUsed.length > 0 ? actualUsed : safeMaterials, skippedUnsafe)
+            : validated.materialNote;
           return {
             suggestions: validated.suggestions.map((item, idx) => {
               const duration = Math.min(item.durationMinutes, request.timeMinutes);
