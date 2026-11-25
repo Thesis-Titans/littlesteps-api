@@ -187,8 +187,37 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
       expect(Array.isArray(res.body.books)).toBe(true);
       expect(res.body.books).toHaveLength(2);
       expect(res.body.books[0].id).toBe("OL52987W");
+      expect(res.body.books[0].coverUrl).toMatch(/\?default=false$/);
       // Fix #2: license must use the Open Library licence text
       expect(res.body.provenance.license).toBe("Open Library data; no new rights asserted by the Internet Archive (see https://openlibrary.org/developers/licensing); some contributions may carry existing rights");
+    });
+
+    it("queries Open Library search.json with language=eng and picture books filter", async () => {
+      const mockFetch = makeFetchOk({
+        numFound: 1,
+        docs: [
+          {
+            key: "/works/OL99999W",
+            title: "Goodnight Moon",
+            author_name: ["Margaret Wise Brown"],
+            cover_i: 8235786,
+            subject: ["Bedtime", "Picture books"]
+          }
+        ]
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      const res = await request(app).get("/api/v1/catalog/books?subject=bedtime&limit=2");
+      expect(res.status).toBe(200);
+      const calledUrl = String(mockFetch.mock.calls[0]?.[0] ?? "");
+      expect(calledUrl).toContain("openlibrary.org/search.json");
+      expect(calledUrl).toContain("language=eng");
+      expect(calledUrl).toContain("picture%20books");
+      expect(res.body.books[0]).toMatchObject({
+        id: "OL99999W",
+        title: "Goodnight Moon",
+        coverUrl: "https://covers.openlibrary.org/b/id/8235786-M.jpg?default=false"
+      });
     });
 
     it("serves a cache HIT on subsequent identical request without calling fetch again", async () => {

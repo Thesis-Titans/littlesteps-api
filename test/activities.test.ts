@@ -323,6 +323,59 @@ describe("activities planning and completion API", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("INVALID_INPUT");
     });
+
+    it("persists and returns optional customActivity snapshot on create and list", async () => {
+      const customActivity = {
+        title: "Shoe Box Sorting",
+        domain: "cognitive",
+        durationMinutes: 15,
+        setting: "indoor",
+        materials: ["shoes"],
+        instructions: ["Line up two pairs of shoes.", "Ask your child to match each pair."],
+        safetyNotice: "Keep loose laces tucked away during play.",
+        sourceLabel: "Material adaptation"
+      };
+
+      const createRes = await request(app)
+        .post(`/api/v1/children/${childA.id}/plans`)
+        .set("Authorization", AUTH_A)
+        .send({
+          activityId: "custom-shoe-box-sorting",
+          scheduledDate: "2026-11-25",
+          customActivity
+        });
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.durationMinutes).toBe(15);
+      expect(createRes.body.customActivity).toEqual(customActivity);
+
+      const listRes = await request(app)
+        .get(`/api/v1/children/${childA.id}/plans?date=2026-11-25`)
+        .set("Authorization", AUTH_A);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body).toHaveLength(1);
+      expect(listRes.body[0].customActivity).toEqual(customActivity);
+    });
+
+    it("rejects invalid customActivity payloads (400)", async () => {
+      const res = await request(app)
+        .post(`/api/v1/children/${childA.id}/plans`)
+        .set("Authorization", AUTH_A)
+        .send({
+          activityId: "custom-bad",
+          scheduledDate: "2026-11-25",
+          customActivity: {
+            title: "Bad Plan",
+            domain: "motor",
+            durationMinutes: 10,
+            setting: "indoor",
+            materials: [],
+            instructions: []
+          }
+        });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("INVALID_INPUT");
+    });
   });
 
   describe("error handling and resilience", () => {

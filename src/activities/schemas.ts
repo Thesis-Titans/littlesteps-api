@@ -28,13 +28,35 @@ export const FeedbackNoteSchema = z
   .transform((s) => s.trim().replace(/\s+/g, " "))
   .refine((s) => !/[\p{Cc}\p{Cf}]/u.test(s), "Feedback note must not contain control or invisible characters");
 
+const cleanText = (maxLen: number, label: string) =>
+  z
+    .string()
+    .min(1)
+    .max(maxLen)
+    .transform((s) => s.trim().replace(/\s+/g, " "))
+    .refine((s) => s.length > 0 && !/[\p{Cc}\p{Cf}]/u.test(s), `${label} must not be empty or contain control characters`);
+
+export const CustomPlanActivitySchema = z
+  .object({
+    title: cleanText(120, "Title"),
+    domain: z.enum(["cognitive", "motor", "language", "socioEmotional"]),
+    durationMinutes: DurationMinutesSchema,
+    setting: z.enum(["indoor", "outdoor", "either"]),
+    materials: z.array(cleanText(60, "Material")).max(10),
+    instructions: z.array(cleanText(300, "Instruction")).min(1).max(6),
+    safetyNotice: cleanText(200, "Safety notice").optional(),
+    sourceLabel: cleanText(80, "Source label").optional()
+  })
+  .strict();
+
 export const CreatePlanSchema = z
   .object({
     activityId: ActivityIdSchema,
     scheduledDate: ScheduledDateSchema,
     status: PlanStatusSchema.optional(),
     durationMinutes: DurationMinutesSchema.optional(),
-    feedbackNote: FeedbackNoteSchema.optional()
+    feedbackNote: FeedbackNoteSchema.optional(),
+    customActivity: CustomPlanActivitySchema.optional()
   })
   .strict();
 

@@ -95,8 +95,9 @@ activitiesRouter.post("/", async (request, response) => {
     scheduledDate: parsed.data.scheduledDate,
     status,
     completedAt,
-    durationMinutes: parsed.data.durationMinutes,
+    durationMinutes: parsed.data.durationMinutes ?? parsed.data.customActivity?.durationMinutes,
     feedbackNote: parsed.data.feedbackNote,
+    customActivity: parsed.data.customActivity,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString()
   };
