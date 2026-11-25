@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { AgeBand } from "../catalog/types.js";
+import { containsHazardousMaterial } from "./sanitize.js";
 
 // Non-diagnostic wording rule: docs/ui-ux-design-specification.md section 8 and
 // security-privacy-ai.md NFR-AI-04. Text is normalised first (Unicode, lookalikes, case); fail closed on any match.
@@ -125,4 +127,65 @@ export function validateOutput(reply: unknown, candidateIds: ReadonlySet<string>
     ids.add(pick.id);
   }
   return picks;
+}
+
+const safeText = (maxLen: number) =>
+  z.string().trim().min(1).max(maxLen).refine((w) => !/[<>]|https?:\/\/|www\./i.test(w));
+
+const CustomPlaySuggestionSchema = z.object({
+  title: safeText(60),
+  domain: z.enum(["cognitive", "motor", "language", "socioEmotional"]),
+  durationMinutes: z.number().int().min(1).max(120),
+  setting: z.enum(["indoor", "outdoor", "either"]),
+  usedMaterials: z.array(safeText(50)).max(10),
+  instructions: z.array(safeText(200)).min(2).max(5),
+  safetyNotice: safeText(140),
+  whyPicked: safeText(MAX_WHY_LENGTH)
+});
+
+const CustomPlayReplySchema = z.object({
+  suggestions: z.array(CustomPlaySuggestionSchema).min(1).max(3),
+  materialNote: safeText(200).optional()
+});
+
+export type CustomPlaySuggestion = z.infer<typeof CustomPlaySuggestionSchema>;
+
+export interface CustomPlayOutput {
+  suggestions: CustomPlaySuggestion[];
+  materialNote?: string;
+}
+
+/** Validates guardrailed custom AI play suggestions; fails closed on any clinical term or hazardous material. */
+export function validateCustomPlayOutput(
+  reply: unknown,
+  ageBand: AgeBand,
+  count: number
+): CustomPlayOutput | null {
+  const parsed = CustomPlayReplySchema.safeParse(reply);
+  if (!parsed.success) return null;
+
+  const suggestions = parsed.data.suggestions.slice(0, count);
+  const materialNote = parsed.data.materialNote;
+  if (materialNote && hitsDenylist(materialNote)) return null;
+
+  for (const item of suggestions) {
+    if (
+      hitsDenylist(item.title) ||
+      hitsDenylist(item.safetyNotice) ||
+      hitsDenylist(item.whyPicked) ||
+      item.instructions.some((step) => hitsDenylist(step)) ||
+      item.usedMaterials.some((m) => hitsDenylist(m))
+    ) {
+      return null;
+    }
+    // Fail closed if the model sneaks a hazardous item into materials or instructions.
+    if (
+      item.usedMaterials.some((m) => containsHazardousMaterial(m, ageBand)) ||
+      item.instructions.some((step) => containsHazardousMaterial(step, ageBand))
+    ) {
+      return null;
+    }
+  }
+
+  return { suggestions, ...(materialNote ? { materialNote } : {}) };
 }

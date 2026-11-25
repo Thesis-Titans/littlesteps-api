@@ -1,9 +1,15 @@
 import { getApprovedActivities } from "../catalog/catalog-service.js";
 import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
-import { cleanMaterials } from "./sanitize.js";
-import { buildAdaptPrompt, buildPrompt, buildStoryPrompt } from "./prompt.js";
+import type { CatalogActivity } from "../catalog/types.js";
+import { cleanMaterials, screenMaterialsForSafety } from "./sanitize.js";
+import { buildAdaptPrompt, buildCustomPlayPrompt, buildPrompt, buildStoryPrompt } from "./prompt.js";
 import { filterEligible, rankActivities, FALLBACK_WHY } from "./fallback.js";
-import { validateAdaptOutput, validateOutput, validateStoryOutput } from "./validate-output.js";
+import {
+  validateAdaptOutput,
+  validateCustomPlayOutput,
+  validateOutput,
+  validateStoryOutput
+} from "./validate-output.js";
 import type { AiProvider } from "./providers/provider.js";
 import {
   DISCLAIMER,
@@ -24,14 +30,38 @@ function logEvent(event: string, tier: number, startedAt: number, errorClass?: s
   console.info(JSON.stringify({ event, tier, latencyMs: Date.now() - startedAt, ...(errorClass ? { errorClass } : {}) }));
 }
 
-function fallbackResponse(suggestions: RecommendationResponse["suggestions"], reason?: "NO_REVIEWED_CONTENT"): RecommendationResponse {
+function fallbackResponse(
+  suggestions: RecommendationResponse["suggestions"],
+  reason?: "NO_REVIEWED_CONTENT",
+  materialNote?: string
+): RecommendationResponse {
   return {
     suggestions,
     source: "catalog_fallback",
     tier: 3,
     provenance: { badge: null, label: "Our picks", disclaimer: DISCLAIMER, model: null, reviewed: true },
-    ...(reason ? { reason } : {})
+    ...(reason ? { reason } : {}),
+    ...(materialNote ? { materialNote } : {})
   };
+}
+
+function hasCatalogMaterialOverlap(candidates: CatalogActivity[], materials: string[]): boolean {
+  const userTokens = new Set(
+    materials
+      .flatMap((m) => m.split(/[^a-z0-9]+/i))
+      .map((t) => t.toLowerCase().trim())
+      .filter((t) => t.length >= 3 && t !== "and" && t !== "the" && t !== "with")
+  );
+  if (userTokens.size === 0) return false;
+  return candidates.some((candidate) =>
+    candidate.materials.some((cm) => {
+      const lower = cm.toLowerCase();
+      for (const token of userTokens) {
+        if (lower.includes(token)) return true;
+      }
+      return false;
+    })
+  );
 }
 
 async function callWithTimeout(provider: AiProvider, prompt: string, timeoutMs: number): Promise<unknown> {
@@ -63,6 +93,95 @@ export async function recommend(
 
   const materials = cleanMaterials(request.materials);
   const candidates = filterEligible(approved, request);
+
+  // Hybrid Step 2: when allowCustom is enabled and caregiver-provided materials
+  // do not match any reviewed catalog activity, screen for pediatric hazards
+  // and ask Gemini for a guardrailed custom idea using only safe items.
+  let skippedSafetyNote: string | undefined;
+  if (request.allowCustom && materials.length > 0 && !hasCatalogMaterialOverlap(candidates, materials)) {
+    const { safeMaterials, skippedUnsafe } = screenMaterialsForSafety(materials, request.ageBand);
+    if (skippedUnsafe.length > 0) {
+      const skippedList = skippedUnsafe.join(", ");
+      skippedSafetyNote = safeMaterials.length > 0
+        ? `Using ${safeMaterials.join(", ")} for safe supervised play; skipped ${skippedList} because it isn't safe for young children to handle or mouth.`
+        : `Skipped ${skippedList} because it isn't safe for young children to handle or mouth. Here are reviewed play ideas for this age instead.`;
+    }
+
+    if (provider && safeMaterials.length > 0) {
+      try {
+        const customPrompt = buildCustomPlayPrompt({
+          ageBand: request.ageBand,
+          timeMinutes: request.timeMinutes,
+          setting: request.setting,
+          safeMaterials,
+          skippedUnsafeMaterials: skippedUnsafe,
+          language: request.language,
+          domain: request.domain,
+          count: request.count
+        });
+        const reply = await callWithTimeout(provider, customPrompt, timeoutMs);
+        const validated = validateCustomPlayOutput(reply, request.ageBand, request.count);
+        if (validated) {
+          logEvent("ai.custom_ok", 1, startedAt);
+          const finalNote = skippedSafetyNote ?? validated.materialNote;
+          return {
+            suggestions: validated.suggestions.map((item, idx) => {
+              const duration = Math.min(item.durationMinutes, request.timeMinutes);
+              const resolvedSetting = request.setting === "either" ? item.setting : request.setting;
+              return {
+                activityId: `custom-${idx + 1}`,
+                title: item.title,
+                whyPicked: item.whyPicked,
+                isCustom: true,
+                activity: {
+                  id: `custom-${idx + 1}`,
+                  title: item.title,
+                  type: "activity",
+                  language: request.language,
+                  domain: item.domain,
+                  ageBand: request.ageBand,
+                  durationMinutes: duration,
+                  durationEstimate: `${duration} mins`,
+                  setting: resolvedSetting,
+                  materials: item.usedMaterials,
+                  instructions: item.instructions,
+                  limitations: item.safetyNotice,
+                  status: "synthetic_fixture",
+                  provenanceSource: ""
+                }
+              };
+            }),
+            source: "ai_custom",
+            tier: 1,
+            provenance: {
+              badge: "Suggested by AI",
+              label: "Material adaptation",
+              disclaimer: DISCLAIMER,
+              guidance: GUIDANCE,
+              model: provider.model,
+              reviewed: false
+            },
+            ...(finalNote ? { materialNote: finalNote } : {})
+          };
+        }
+        logEvent("ai.custom_invalid_output", 3, startedAt);
+      } catch (error) {
+        logEvent("ai.custom_failed", 3, startedAt, error instanceof Error ? error.name : "Unknown");
+      }
+    }
+
+    // If all provided materials were unsafe, return reviewed catalog picks with the safety note.
+    if (safeMaterials.length === 0 && skippedSafetyNote) {
+      const ranked = rankActivities(approved, request, []);
+      return fallbackResponse(
+        ranked.map((activity) => ({
+          activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+        })),
+        undefined,
+        skippedSafetyNote
+      );
+    }
+  }
 
   if (provider && candidates.length > 0) {
     try {
@@ -104,9 +223,13 @@ export async function recommend(
   }
 
   const ranked = rankActivities(approved, request, materials);
-  return fallbackResponse(ranked.map((activity) => ({
-    activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
-  })));
+  return fallbackResponse(
+    ranked.map((activity) => ({
+      activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+    })),
+    undefined,
+    skippedSafetyNote
+  );
 }
 
 /**

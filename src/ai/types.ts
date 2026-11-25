@@ -15,7 +15,8 @@ export const RecommendationRequestSchema = z.strictObject({
   timeMinutes: z.number().int().min(5).max(120),
   materials: z.array(z.string().max(40)).max(10).default([]),
   language: LanguageSchema,
-  count: z.number().int().min(1).max(3).default(3)
+  count: z.number().int().min(1).max(3).default(3),
+  allowCustom: z.boolean().default(false)
 });
 export type RecommendationRequest = z.infer<typeof RecommendationRequestSchema>;
 
@@ -24,23 +25,25 @@ export interface Suggestion {
   title: string;
   whyPicked: string;
   activity: CatalogActivity;
+  isCustom?: boolean;
 }
 
 export interface Provenance {
   badge: "Suggested by AI" | null;
-  label: "Our picks" | null;
+  label: "Our picks" | "Material adaptation" | null;
   disclaimer: string;
   guidance?: string;
   model: string | null;
-  reviewed: true;
+  reviewed: boolean;
 }
 
 export interface RecommendationResponse {
   suggestions: Suggestion[];
-  source: "ai" | "catalog_fallback";
+  source: "ai" | "ai_custom" | "catalog_fallback";
   tier: 1 | 2 | 3;
   provenance: Provenance;
   reason?: "NO_REVIEWED_CONTENT";
+  materialNote?: string;
 }
 
 // Strict schema for story companion activity requests
