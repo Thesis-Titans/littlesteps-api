@@ -13,9 +13,11 @@ This contract does not replace Mark's and the feature partner's review.
 - [UI specification](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/ui-ux-design-specification.md), sections 2 and 4: month/year input, direct-band alternative, no surname/photo.
 - [Security/privacy requirements](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/security-privacy-ai.md): NFR-SEC-01/02/04 and NFR-PRIV-01/03.
 
-The authoritative interface is [OpenAPI](../openapi/openapi.yaml). Only
-`GET /health`, `GET /api/v1/me`, the catalog routes and the child create, list, read and update routes currently exist.
-Child and account deletion (`DELETE /api/v1/children/{childId}`, `DELETE /api/v1/me`) and data export (`GET /api/v1/me/export`) are implemented (Issue #17), and rate limiting exists only on the AI recommendations endpoint.
+The authoritative interface is [OpenAPI](../openapi/openapi.yaml). All M1–M4 API routes—including
+`GET /health`, `GET /api/v1/me`, `GET /api/v1/me/export`, `DELETE /api/v1/me`, catalog routes,
+child profile CRUD + cascade deletion (`DELETE /api/v1/children/{childId}`), plans, journal,
+milestones, weekly summaries, and AI helper routes—are implemented. Rate limiting is active on
+the AI endpoints (`POST /api/v1/ai/recommendations` and `POST /api/v1/ai/story-activity`).
 
 ## Minimum model and API/storage mapping
 
@@ -137,7 +139,7 @@ the cheapest later change is `application/problem+json`. Error responses send
 15.1 lists 404 as heuristically cacheable.
 Any endpoint may return `429 RATE_LIMITED` with `Retry-After: <delay-seconds>`
 (RFC 6585 section 4, RFC 9110 section 10.2.3); clients should back off for that
-many seconds. Limits are per-IP and per-UID. Rate limiting is implemented only on `POST /api/v1/ai/recommendations` (see the README); the child routes are not rate limited yet.
+many seconds. Limits are per-IP and per-UID. Rate limiting is implemented on the AI endpoints (`POST /api/v1/ai/recommendations` and `POST /api/v1/ai/story-activity`, see the README); the child routes are not rate limited yet.
 `INVALID_INPUT` uses 400, matching the existing malformed-input status.
 A JSON body over 100 KB returns `413 PAYLOAD_TOO_LARGE` (`The request body is too large.`, RFC 9110 section 15.5.14) with `Cache-Control: no-store`; this is checked before authentication, so it applies to any route that reads a body.
 Generic 500 and CORS 403 remain as implemented in `src/app.ts`; ownership uses

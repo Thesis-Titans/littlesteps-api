@@ -50,7 +50,7 @@ npm run typecheck
 # 6. Build JavaScript bundle
 npm run build
 
-# 7. Run unit test suite (388 passing tests across 17 test suites)
+# 7. Run unit and integration test suite (446 passing tests across 23 test files)
 npm test
 
 # 8. Run Firebase Emulator integration suite (Auth & Firestore)
@@ -89,7 +89,7 @@ All authenticated routes require a Firebase ID token sent in the `Authorization:
 
 ### Child profile management (FR-01)
 - `GET /api/v1/children` — List children registered to the authenticated caregiver.
-- `POST /api/v1/children` — Register a child profile (birth date, sex, optional nickname).
+- `POST /api/v1/children` — Register a child profile (`nickname` plus either `birthMonthYear` or `ageBand`).
 - `GET /api/v1/children/{childId}` — Retrieve child profile by ID.
 - `PATCH /api/v1/children/{childId}` — Update child profile fields.
 - `DELETE /api/v1/children/{childId}` — Hard cascade deletion of child document and nested subcollections.
@@ -115,11 +115,12 @@ All authenticated routes require a Firebase ID token sent in the `Authorization:
 ### Weekly reflection summary (FR-05)
 - `GET /api/v1/children/{childId}/summary/weekly` — Aggregate completed plans and milestone observations over a 7-day window.
 
-### Constrained AI play helpers (FR-07)
-- `POST /api/v1/ai/recommendations` — Play suggestions selected from reviewed catalog items using age band, available time, materials, and environment.
-- `POST /api/v1/ai/story-activity` — Play idea generator based on picture book themes, materials, and caregiver preferences.
+### Constrained AI play helpers (FR-06)
+- `POST /api/v1/ai/recommendations` — Catalog-first play suggestions matched from reviewed catalog items using age band, available time, materials, and setting; supports opt-in guardrailed custom material adaptation (`allowCustom: true`, `source: "ai_custom"`) with pediatric hazard screening when safe materials have no catalog overlap.
+- `POST /api/v1/ai/story-activity` — Play idea generator based on picture book themes, subjects, and child age band.
+- `POST /api/v1/ai/adapt` — Adapts an existing reviewed catalog activity for available household items or space, with rule-based Tier 2 fallback.
 
-Both AI routes execute with the 3-tier fallback engine: Cloud Gemini $\to$ Local Edge Ollama $\to$ Deterministic Catalog Matcher.
+Play-idea routes fall back from Cloud Gemini (Tier 1) directly to Deterministic Catalog Matching (Tier 3); `/api/v1/ai/adapt` uses rule-based Tier 2 fallback (a local Ollama tier was planned in ADR-010 but is not built).
 
 ---
 
@@ -153,7 +154,7 @@ littlesteps-api/
 ## AI provider and safety guardrails
 
 ### Provider configuration
-- **Required environment variables:** `GEMINI_API_KEY` and `GEMINI_MODEL` (e.g., `gemini-2.5-flash`).
+- **Required environment variables:** `GEMINI_API_KEY` and an explicit pinned stable `GEMINI_MODEL` (e.g., `gemini-3.5-flash-lite`; avoid floating `-latest` aliases in production). For local demo mode with synthetic catalog fixtures, also set `SERVE_SYNTHETIC_CATALOG=true` and `DEMO_ALLOW_SYNTHETIC_AI=true`.
 - When variables are unset or the provider times out (8-second abort signal), the engine automatically falls back to deterministic catalog matching with HTTP 200.
 - Circuit breaker trips after 3 consecutive external provider failures, routing requests directly to the fallback engine for 60 seconds.
 

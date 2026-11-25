@@ -84,8 +84,9 @@ All error responses return a standardized `{ error: { code, message, details? } 
 | :--- | :--- | :--- | :--- |
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Set explicitly to verified HTTPS frontend origin(s) | Wildcard `*` is prohibited (`NFR-SEC-04`). |
 | `SERVE_SYNTHETIC_CATALOG` | Unset (`false`) | Must remain unset/`false` in production | Only set to `true` in local/demo environments until Docs Issue #3 curriculum review completes. |
+| `DEMO_ALLOW_SYNTHETIC_AI` | Unset (`false`) | Must remain unset/`false` in production | Allows local/demo Gemini calls against synthetic catalog fixtures when `SERVE_SYNTHETIC_CATALOG=true`. |
 | `GEMINI_API_KEY` | Unset (AI provider disabled) | Inject via Firebase Secret Manager (`firebase functions:secrets:set GEMINI_API_KEY`) | Never commit to Git or expose to client bundles; sent only in server-side `x-goog-api-key` header. |
-| `GEMINI_MODEL` | Unset (AI provider disabled) | Explicit supported model ID (e.g., `gemini-2.5-flash`) | If either `GEMINI_API_KEY` or `GEMINI_MODEL` is unset, `POST /api/v1/ai/recommendations` safely serves the Tier 3 deterministic catalog fallback. |
+| `GEMINI_MODEL` | Unset (AI provider disabled) | Explicit pinned stable model ID (e.g., `gemini-3.5-flash-lite`; avoid floating `-latest` aliases) | If either `GEMINI_API_KEY` or `GEMINI_MODEL` is unset, `POST /api/v1/ai/recommendations` safely serves the Tier 3 deterministic catalog fallback. |
 | `TRUST_PROXY_HOPS` | `1` | Verify hop count on deployed Cloud Function before relying on IP cap | Uses rightmost `X-Forwarded-For` entry appended by Google frontend proxy. |
 | `AI_IP_LIMIT_PER_HOUR` | `30` | `30` (or `0` to disable IP cap while keeping 10/hr per-UID Firestore cap) | Protects against shared-IP bursts and uncached abuse. |
 | `OPEN_LIBRARY_CONTACT` | Unset | Set team contact email for Open Library `User-Agent` | Polite API identification per Open Library guidelines. |
@@ -113,5 +114,6 @@ Before any cloud deployment (`firebase deploy`), complete and record sign-off on
 - [ ] **6. AI Provider Terms, Budget & Data Guardrails (§6.5, `ADR-008`, `NFR-AI-02..04`):**
   - Per-user (`10/hr`) and per-IP (`30/hr`) rate limits, 8-second request timeout, 64KB response cap, and 3-failure/60-second circuit breaker are active on `POST /api/v1/ai/recommendations`.
   - Prompts strip all PII and include only coarse `ageBand`, `timeMinutes`, `setting`, sanitized `materials`, `language`, and catalog candidate IDs/titles.
+  - When opt-in custom material adaptation (`allowCustom: true`) is triggered for unmatched materials, `screenMaterialsForSafety()` filters out pediatric hazards before prompting, returns a calm `materialNote`, and `validateCustomPlayOutput()` enforces Zod bounds, the 33-term non-diagnostic denylist, and the hazardous-material denylist (failing closed to Tier 3 catalog fallback on any violation).
   - Per `ADR-008`, the Gemini API free tier is restricted to **synthetic data only** for course evaluation; transition to a paid tier or Vertex AI with zero-training data retention terms before onboarding real caregiver data.
 
