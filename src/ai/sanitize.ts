@@ -3,10 +3,10 @@ import type { AgeBand } from "../catalog/types.js";
 const MAX_MATERIAL_LENGTH = 40;
 
 const ALWAYS_HAZARDOUS_PATTERN =
-  /\b(shampoo|conditioner|soap|detergent|bleach|cleaner|cleaning|disinfectant|sanitizer|alcohol|lotion|perfume|nail\s*polish|acetone|paint|glue|adhesive|chemical|pesticide|insecticide|medicine|pill|tablet|vitamin|knife|knives|scissor|scissors|blade|razor|needle|pins?|nail|screw|staple|glass|shard|lighter|match(?:stick)?s?|candle|fire|flame|stove|boiling|hot\s*water|iron|battery|batteries|charger|wire|cord|outlet|plastic\s*(?:grocery\s*)?bags?|strings?|ropes?)\b/i;
+  /\b(shampo(?:o)?|conditioner|soap|detergent|bleach|cleaner|cleaning|disinfectant|saniti[sz]er|alcohol|lotion|perfume|toothpaste|makeup|cosmetics?|nail\s*polish|acetone|paint|glue|adhesive|chemical|pesticide|insecticide|medicine|pill|tablets?|vitamin|knife|knives|scissor|scissors|blade|razor|needle|pins?|nail|screw|staple|paperclips?|toothpicks?|glass|shard|lighter|match(?:stick)?s?|candle|fire|flame|stove|boiling|hot\s*water|iron|battery|batteries|charger|wire|cord|cables?|plugs?|sockets?|outlet|cell\s*phones?|cellphones?|smartphones?|phones?|laptops?|remote|plastic\s*(?:grocery\s*)?bags?|strings?|ropes?)\b/i;
 
 const TODDLER_CHOKING_PATTERN =
-  /\b(coins?|marbles?|buttons?|beads?|pebbles?|stones?|rocks?|magnets?|balloons?|popcorn|grapes?|peanuts?|nuts?|seeds?|raw\s*carrots?|bottle\s*caps?|small\s*caps?)\b/i;
+  /\b(coins?|marbles?|buttons?|beads?|pebbles?|stones?|rocks?|magnets?|balloons?|popcorn|grapes?|peanuts?|nuts?|seeds?|raw\s*carrots?|bottle\s*caps?|small\s*caps?|caps?|lids?)\b/i;
 
 const NON_MATERIAL_PROBE_PATTERN =
   /\b(ignore|override|system|prompt|instruction|diagnos|autis|adhd|delay|therap|assess|clinical|disorder|deficit|syndrome|antala|kapansanan)\b/i;
