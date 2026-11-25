@@ -67,7 +67,44 @@ export const ADAPT_RESPONSE_SCHEMA = {
   required: ["adaptedTitle", "instructions", "materials", "safetyNotice", "explanation"]
 };
 
+export const CUSTOM_PLAY_RESPONSE_SCHEMA = {
+  type: t("OBJECT"),
+  properties: {
+    suggestions: {
+      type: t("ARRAY"),
+      items: {
+        type: t("OBJECT"),
+        properties: {
+          title: { type: t("STRING") },
+          domain: { type: t("STRING"), enum: ["cognitive", "motor", "language", "socioEmotional"] },
+          durationMinutes: { type: t("INTEGER") },
+          setting: { type: t("STRING"), enum: ["indoor", "outdoor", "either"] },
+          usedMaterials: { type: t("ARRAY"), items: { type: t("STRING") } },
+          instructions: { type: t("ARRAY"), items: { type: t("STRING") } },
+          safetyNotice: { type: t("STRING") },
+          whyPicked: { type: t("STRING") }
+        },
+        required: [
+          "title",
+          "domain",
+          "durationMinutes",
+          "setting",
+          "usedMaterials",
+          "instructions",
+          "safetyNotice",
+          "whyPicked"
+        ]
+      }
+    },
+    materialNote: { type: t("STRING") }
+  },
+  required: ["suggestions"]
+};
+
 export function resolveResponseSchema(prompt: string): Record<string, unknown> {
+  if (prompt.startsWith("You design safe, screen-free early-childhood play ideas")) {
+    return CUSTOM_PLAY_RESPONSE_SCHEMA;
+  }
   if (prompt.startsWith("You adapt a known early-childhood play activity")) {
     return ADAPT_RESPONSE_SCHEMA;
   }
