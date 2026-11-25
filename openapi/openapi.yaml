@@ -466,12 +466,18 @@ paths:
   /api/v1/ai/recommendations:
     post:
       operationId: createAiRecommendations
-      summary: Suggest reviewed catalog activities for an age band
+      summary: Suggest reviewed catalog activities or guardrailed custom material adaptations
       description: >-
         Generates constrained activity suggestions for a specified age band and household context.
-        Only approved catalog items are returned; titles and instructions always originate from reviewed catalog activities.
-        The request carries no child or caregiver identifiers, and unknown fields are rejected. On provider failure
-        or invalid output, the service gracefully falls back to deterministic catalog ranking (tier 3).
+        By default (`allowCustom: false`), only approved catalog items are returned and titles/instructions
+        always originate from reviewed catalog activities (`source: "ai"`). When `allowCustom: true` and
+        safe household materials have zero overlap with reviewed catalog activities, the server screens out
+        pediatric hazards (chemicals, detergents, sharp items, small choking hazards), returns a caregiver-facing
+        `materialNote` if any item was skipped, and generates one bounded custom activity (`source: "ai_custom"`,
+        `provenance.reviewed: false`, `provenance.label: "Material adaptation"`) validated against Zod bounds,
+        the non-diagnostic denylist, and the hazard denylist.
+        The request carries no child or caregiver identifiers, and unknown fields are rejected. On provider failure,
+        all-unsafe materials, or invalid output, the service fails closed to deterministic catalog ranking (tier 3).
         With no reviewed content, returns HTTP 200 with an empty list. Responses are never cached.
 
         Rate limit: 10 requests per signed-in user and 30 per IP address in each clock hour (fixed window, UTC).
@@ -1475,6 +1481,12 @@ components:
           minimum: 1
           maximum: 3
           default: 3
+        allowCustom:
+          type: boolean
+          default: false
+          description: >-
+            When true and safe household materials have zero overlap with reviewed catalog activities,
+            allows a single guardrailed custom material adaptation (source: ai_custom, provenance.reviewed: false).
     RecommendationResponse:
       type: object
       required: [suggestions, source, tier, provenance]
@@ -1493,14 +1505,21 @@ components:
               whyPicked:
                 type: string
                 maxLength: 140
+              isCustom:
+                type: boolean
+                description: True when the suggestion is a guardrailed custom adaptation rather than a reviewed catalog activity.
               activity:
                 $ref: '#/components/schemas/CatalogActivity'
         source:
           type: string
-          enum: [ai, catalog_fallback]
+          enum: [ai, ai_custom, catalog_fallback]
         tier:
           type: integer
           enum: [1, 2, 3]
+        materialNote:
+          type: string
+          maxLength: 240
+          description: Optional caregiver-facing note explaining hazardous household items skipped during safety screening.
         provenance:
           type: object
           required: [badge, label, disclaimer, model, reviewed]
@@ -1510,17 +1529,17 @@ components:
               enum: [Suggested by AI, null]
             label:
               type: [string, 'null']
-              enum: [Our picks, null]
+              enum: [Our picks, Material adaptation, null]
             disclaimer:
               type: string
             guidance:
               type: string
-              description: Present only when source is ai.
+              description: Present when source is ai or ai_custom.
             model:
               type: [string, 'null']
             reviewed:
               type: boolean
-              const: true
+              description: True for reviewed catalog matches and Tier 3 fallback; false for custom material adaptations (source ai_custom).
         reason:
           type: string
           enum: [NO_REVIEWED_CONTENT]
