@@ -110,12 +110,18 @@ export interface CustomPlayPromptInput {
 }
 
 const CUSTOM_PLAY_INSTRUCTIONS = [
-  "You design safe, screen-free early-childhood play ideas for a parent at home using only the safe household items provided.",
-  "Use only safe items from safeMaterialsAtHome (or no extra items). Never include any item from skippedUnsafeMaterials, nor any typo or variant of liquids/chemicals (shampoo, soap, detergent, lotion, bleach, sanitizer), fragile/sharp/electrical/screen items (glass, charger, cord, knife, scissors, cellphone, phone, tablet), or small choking hazards (cap, bottle cap, lid, coin, button, marble, bead, battery).",
-  "For ages 0-35m, keep activities strictly screen-free, mouth-safe, gentle, and adult-supervised; never suggest caps, lids, coins, beads, or small loose parts.",
+  "You design safe, screen-free early-childhood play ideas for a parent at home using household items.",
+  "STEP 1 — Evaluate every item in caregiverMaterials FIRST in materialAssessments before designing any activity:",
+  "- Normalize typos, phrasing variations, and Filipino/Hiligaynon terms into clear standard names (e.g., 'shampo' -> 'shampoo', 'sabon'/'habon' -> 'soap', 'saging' -> 'banana', 'glas' -> 'glass').",
+  "- Apply pediatric safety principles for the child's ageBand:",
+  "  (a) Mark isSafe=false for liquids, soaps, chemicals, toiletries, cosmetics, or medicines (ingestion/eye hazard).",
+  "  (b) For ages 0-35m, mark isSafe=false for small choking hazards (anything small enough to fit inside a toilet-paper tube, such as caps, lids, coins, beads, buttons, marbles, batteries).",
+  "  (c) Mark isSafe=false for sharp, fragile/breakable, hot, electrical, or screen/electronic items (glass, knives, chargers, cords, cellphones, tablets, remotes; LittleSteps is strictly screen-free).",
+  "STEP 2 — Design 1 to maxPicks activities using ONLY items you marked isSafe=true (or [] if zero items are safe).",
+  "Never include any item marked isSafe=false or any item in skippedUnsafeMaterials inside usedMaterials or instructions.",
   "Respect setting (indoor, outdoor, or either) and keep each activity duration <= timeMinutes.",
-  "Reply with JSON only: {\"suggestions\":[{\"title\":\"<short title <= 60 chars>\",\"domain\":\"cognitive|motor|language|socioEmotional\",\"durationMinutes\":10,\"setting\":\"indoor|outdoor|either\",\"usedMaterials\":[\"<item>\"],\"instructions\":[\"<step 1>\",\"<step 2>\",\"<step 3>\"],\"safetyNotice\":\"<one clear supervision sentence <= 140 chars>\",\"whyPicked\":\"<one plain sentence <= 140 chars>\"}],\"materialNote\":\"<optional calm note <= 180 chars explaining which items were used or skipped>\"}.",
-  "Provide 1 to maxPicks suggestions, each with 2 to 4 concrete, playful steps.",
+  "Reply with JSON only: {\"materialAssessments\":[{\"input\":\"<raw>\",\"normalizedItem\":\"<clean name>\",\"isSafe\":true,\"reason\":\"<short reason if unsafe>\"}],\"suggestions\":[{\"title\":\"<short title <= 60 chars>\",\"domain\":\"cognitive|motor|language|socioEmotional\",\"durationMinutes\":10,\"setting\":\"indoor|outdoor|either\",\"usedMaterials\":[\"<normalized safe item>\"],\"instructions\":[\"<step 1>\",\"<step 2>\",\"<step 3>\"],\"safetyNotice\":\"<one clear supervision sentence <= 140 chars>\",\"whyPicked\":\"<one plain sentence <= 140 chars>\"}],\"materialNote\":\"<optional calm note <= 180 chars>\"}.",
+  "Provide 2 to 4 concrete, playful steps per suggestion.",
   "Never invent citations, page numbers, or publication names.",
   "Never mention delays, diagnoses, assessments, clinical terms, therapy, deficits, or scores."
 ].join("\n");
@@ -125,7 +131,7 @@ export function buildCustomPlayPrompt(input: CustomPlayPromptInput): string {
     ageBand: input.ageBand,
     timeMinutes: input.timeMinutes,
     setting: input.setting,
-    safeMaterialsAtHome: input.safeMaterials,
+    caregiverMaterials: input.safeMaterials,
     skippedUnsafeMaterials: input.skippedUnsafeMaterials,
     language: input.language,
     preferredDomain: input.domain ?? null,

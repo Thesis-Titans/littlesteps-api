@@ -143,19 +143,32 @@ const CustomPlaySuggestionSchema = z.object({
   whyPicked: safeText(MAX_WHY_LENGTH)
 });
 
+const MaterialAssessmentSchema = z.object({
+  input: safeText(50),
+  normalizedItem: safeText(50),
+  isSafe: z.boolean(),
+  reason: safeText(120).optional()
+});
+
 const CustomPlayReplySchema = z.object({
-  suggestions: z.array(CustomPlaySuggestionSchema).min(1).max(3),
+  materialAssessments: z.array(MaterialAssessmentSchema).max(10).optional(),
+  suggestions: z.array(CustomPlaySuggestionSchema).max(3),
   materialNote: safeText(200).optional()
 });
 
+export type MaterialAssessment = z.infer<typeof MaterialAssessmentSchema>;
 export type CustomPlaySuggestion = z.infer<typeof CustomPlaySuggestionSchema>;
 
 export interface CustomPlayOutput {
+  materialAssessments: MaterialAssessment[];
   suggestions: CustomPlaySuggestion[];
   materialNote?: string;
 }
 
-/** Validates guardrailed custom AI play suggestions; fails closed on any clinical term or hazardous material. */
+/**
+ * Layer 3 post-generation safety net: validates normalized model assessments and generated
+ * suggestions; fails closed on any diagnostic wording or hazardous item in normalized output.
+ */
 export function validateCustomPlayOutput(
   reply: unknown,
   ageBand: AgeBand,
@@ -164,9 +177,27 @@ export function validateCustomPlayOutput(
   const parsed = CustomPlayReplySchema.safeParse(reply);
   if (!parsed.success) return null;
 
+  const materialAssessments = parsed.data.materialAssessments ?? [];
   const suggestions = parsed.data.suggestions.slice(0, count);
   const materialNote = parsed.data.materialNote;
   if (materialNote && hitsDenylist(materialNote)) return null;
+
+  const modelRejectedNormalized = new Set<string>();
+  for (const assessment of materialAssessments) {
+    if (
+      hitsDenylist(assessment.normalizedItem) ||
+      (assessment.reason && hitsDenylist(assessment.reason))
+    ) {
+      return null;
+    }
+    if (!assessment.isSafe) {
+      modelRejectedNormalized.add(assessment.normalizedItem.toLowerCase());
+      modelRejectedNormalized.add(assessment.input.toLowerCase());
+    } else if (containsHazardousMaterial(assessment.normalizedItem, ageBand)) {
+      // Model normalized a typo (e.g., "shampo" -> "shampoo") but still marked it safe: fail closed.
+      return null;
+    }
+  }
 
   for (const item of suggestions) {
     if (
@@ -178,14 +209,17 @@ export function validateCustomPlayOutput(
     ) {
       return null;
     }
-    // Fail closed if the model sneaks a hazardous item into materials or instructions.
+    // Fail closed if the model includes any hazardous item or self-rejected item in normalized output.
     if (
-      item.usedMaterials.some((m) => containsHazardousMaterial(m, ageBand)) ||
+      containsHazardousMaterial(item.title, ageBand) ||
+      item.usedMaterials.some(
+        (m) => containsHazardousMaterial(m, ageBand) || modelRejectedNormalized.has(m.toLowerCase())
+      ) ||
       item.instructions.some((step) => containsHazardousMaterial(step, ageBand))
     ) {
       return null;
     }
   }
 
-  return { suggestions, ...(materialNote ? { materialNote } : {}) };
+  return { materialAssessments, suggestions, ...(materialNote ? { materialNote } : {}) };
 }

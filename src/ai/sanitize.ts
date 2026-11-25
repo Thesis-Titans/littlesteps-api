@@ -2,10 +2,18 @@ import type { AgeBand } from "../catalog/types.js";
 
 const MAX_MATERIAL_LENGTH = 40;
 
-const ALWAYS_HAZARDOUS_PATTERN =
-  /\b(shampo(?:o)?|conditioner|soap|detergent|bleach|cleaner|cleaning|disinfectant|saniti[sz]er|alcohol|lotion|perfume|toothpaste|makeup|cosmetics?|nail\s*polish|acetone|paint|glue|adhesive|chemical|pesticide|insecticide|medicine|pill|tablets?|vitamin|knife|knives|scissor|scissors|blade|razor|needle|pins?|nail|screw|staple|paperclips?|toothpicks?|glass|shard|lighter|match(?:stick)?s?|candle|fire|flame|stove|boiling|hot\s*water|iron|battery|batteries|charger|wire|cord|cables?|plugs?|sockets?|outlet|cell\s*phones?|cellphones?|smartphones?|phones?|laptops?|remote|plastic\s*(?:grocery\s*)?bags?|strings?|ropes?)\b/i;
+// Layer 1 (Thin Input Gate): block only extreme, unambiguous dangers before calling the LLM.
+// Everyday household items, typos (e.g., "shampo"), and Filipino/Hiligaynon terms pass to
+// Layer 2 (Gemini structured assessment) and are verified post-generation by Layer 3.
+const EXTREME_INPUT_HAZARD_PATTERN =
+  /\b(bleach|knife|knives|blade|razor|fire|flame|lighter|medicine|pill|poison|pesticide|insecticide|chemical|acetone|acid)\b/i;
 
-const TODDLER_CHOKING_PATTERN =
+// Layer 3 (Post-Generation Safety Net): deterministic check run against Gemini's clean,
+// normalized output (materialsNeeded, titles, steps) to catch any model slips.
+const OUTPUT_HAZARD_PATTERN =
+  /\b(shampoo|conditioner|soap|detergent|bleach|cleaner|disinfectant|sanitizer|alcohol|lotion|perfume|toothpaste|makeup|cosmetics?|nail\s*polish|acetone|paint|glue|adhesive|chemical|pesticide|insecticide|medicine|pill|vitamin|knife|knives|scissor|scissors|blade|razor|needle|pins?|nail|screw|staple|paperclips?|toothpicks?|glass|shard|lighter|match(?:stick)?s?|candle|fire|flame|stove|boiling|hot\s*water|iron|battery|batteries|charger|wire|cord|cables?|plugs?|sockets?|outlet|cell\s*phones?|cellphones?|smartphones?|phones?|tablets?|laptops?|remote|plastic\s*(?:grocery\s*)?bags?|strings?|ropes?)\b/i;
+
+const OUTPUT_TODDLER_CHOKING_PATTERN =
   /\b(coins?|marbles?|buttons?|beads?|pebbles?|stones?|rocks?|magnets?|balloons?|popcorn|grapes?|peanuts?|nuts?|seeds?|raw\s*carrots?|bottle\s*caps?|small\s*caps?|caps?|lids?)\b/i;
 
 const NON_MATERIAL_PROBE_PATTERN =
@@ -28,23 +36,26 @@ export function cleanMaterials(materials: string[]): string[] {
   return [...seen];
 }
 
-/** Returns true if [text] references an item that is unsafe for [ageBand]. */
+/** Layer 3 check: returns true if normalized model output [text] references an item unsafe for [ageBand]. */
 export function containsHazardousMaterial(text: string, ageBand: AgeBand): boolean {
-  if (ALWAYS_HAZARDOUS_PATTERN.test(text)) return true;
-  if (TODDLER_BANDS.has(ageBand) && TODDLER_CHOKING_PATTERN.test(text)) return true;
+  if (OUTPUT_HAZARD_PATTERN.test(text)) return true;
+  if (TODDLER_BANDS.has(ageBand) && OUTPUT_TODDLER_CHOKING_PATTERN.test(text)) return true;
   return false;
 }
 
-/** Partitions cleaned materials into safe items vs. items skipped for pediatric safety or prompt hygiene. */
+/**
+ * Layer 1 thin input gate: strips prompt-injection/clinical probes and blocks only extreme,
+ * unambiguous dangers before sending household items to Gemini for semantic safety assessment.
+ */
 export function screenMaterialsForSafety(
   materials: string[],
-  ageBand: AgeBand
+  _ageBand: AgeBand
 ): { safeMaterials: string[]; skippedUnsafe: string[] } {
   const safeMaterials: string[] = [];
   const skippedUnsafe: string[] = [];
   for (const item of materials) {
     if (item === "none" || item === "no materials") continue;
-    if (containsHazardousMaterial(item, ageBand)) {
+    if (EXTREME_INPUT_HAZARD_PATTERN.test(item)) {
       skippedUnsafe.push(item);
     } else if (NON_MATERIAL_PROBE_PATTERN.test(item)) {
       // Drop prompt-injection or clinical-query strings without echoing them back.
