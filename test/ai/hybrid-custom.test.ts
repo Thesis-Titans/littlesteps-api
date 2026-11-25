@@ -38,11 +38,15 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
     vi.restoreAllMocks();
   });
 
-  it("filters out unsafe shampoo and generates a guardrailed custom banana activity", async () => {
+  it("evaluates banana and shampoo via layered guardrails and generates a custom banana activity", async () => {
     let capturedPrompt = "";
     const provider = new FakeProvider((prompt) => {
       capturedPrompt = prompt;
       return {
+        materialAssessments: [
+          { input: "banana", normalizedItem: "banana", isSafe: true },
+          { input: "shampoo", normalizedItem: "shampoo", isSafe: false, reason: "soap ingestion hazard" }
+        ],
         suggestions: [
           {
             title: "Banana Peel and Squish Play",
@@ -76,16 +80,16 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
     );
 
     expect(resolveResponseSchema(capturedPrompt)).toBe(CUSTOM_PLAY_RESPONSE_SCHEMA);
-    expect(capturedPrompt).toContain('"safeMaterialsAtHome":["banana"]');
-    expect(capturedPrompt).toContain('"skippedUnsafeMaterials":["shampoo"]');
+    expect(capturedPrompt).toContain('"caregiverMaterials":["banana","shampoo"]');
 
     expect(res.source).toBe("ai_custom");
     expect(res.tier).toBe(1);
     expect(res.provenance.badge).toBe("Suggested by AI");
     expect(res.provenance.label).toBe("Material adaptation");
     expect(res.provenance.reviewed).toBe(false);
-    expect(res.materialNote).toContain("shampoo");
-    expect(res.materialNote).toContain("banana");
+    expect(res.materialNote).toBe(
+      "Using banana for safe supervised play; skipped shampoo because it isn't safe for young children to handle or mouth."
+    );
     expect(res.suggestions).toHaveLength(1);
     expect(res.suggestions[0].isCustom).toBe(true);
     expect(res.suggestions[0].activity.provenanceSource).toBe("");
@@ -172,11 +176,20 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
     expect(res.provenance.reviewed).toBe(true);
   });
 
-  it("blocks shampo typo, cellphone, cap, charger, glass for 0-35m, pluralizes skip reason, and derives Using list from actual card materials", async () => {
+  it("lets typos and Filipino/Hiligaynon terms reach Gemini for structured assessment, pluralizes skip reason, and derives Using list from actual card materials", async () => {
     let seenPrompt = "";
     const provider = new FakeProvider((prompt) => {
       seenPrompt = prompt;
       return {
+        materialAssessments: [
+          { input: "banana", normalizedItem: "banana", isSafe: true },
+          { input: "shampo", normalizedItem: "shampoo", isSafe: false, reason: "liquid soap hazard" },
+          { input: "sabon", normalizedItem: "soap", isSafe: false, reason: "ingestion hazard" },
+          { input: "cellphone", normalizedItem: "cellphone", isSafe: false, reason: "screen and fragile device" },
+          { input: "cap", normalizedItem: "bottle cap", isSafe: false, reason: "choking hazard for 0-35m" },
+          { input: "orange", normalizedItem: "orange", isSafe: true },
+          { input: "towel", normalizedItem: "towel", isSafe: true }
+        ],
         suggestions: [
           {
             title: "Fruit Roll and Name",
@@ -200,7 +213,7 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
         ageBand: "12-23m",
         setting: "indoor",
         timeMinutes: 30,
-        materials: ["banana", "shampo", "cellphone", "cap", "orange", "towel", "charger", "glass"],
+        materials: ["banana", "shampo", "sabon", "cellphone", "cap", "orange", "towel", "bleach"],
         language: "en",
         count: 3,
         allowCustom: true
@@ -208,11 +221,84 @@ describe("Hybrid AI Recommendations (Catalog-First + Guardrailed ai_custom)", ()
       provider
     );
 
+    // Layer 1 blocked extreme danger "bleach" before calling Gemini, while passing typos & regional terms through.
+    expect(seenPrompt).toContain('"skippedUnsafeMaterials":["bleach"]');
+    expect(seenPrompt).toContain('"shampo"');
+    expect(seenPrompt).toContain('"sabon"');
+
     expect(res.source).toBe("ai_custom");
     expect(res.materialNote).toBe(
-      "Using banana, orange for safe supervised play; skipped shampo, cellphone, cap, charger, glass because they aren't safe for young children to handle or mouth."
+      "Using banana, orange for safe supervised play; skipped bleach, shampoo, soap, cellphone, bottle cap because they aren't safe for young children to handle or mouth."
     );
     expect(res.materialNote).not.toContain("towel");
-    expect(seenPrompt).toContain("\"safeMaterialsAtHome\":[\"banana\",\"orange\",\"towel\"]");
+  });
+
+  it("Layer 3 fails closed if Gemini normalizes a typo to shampoo or bottle cap but still marks it safe", async () => {
+    const leakyProvider = new FakeProvider(() => ({
+      materialAssessments: [
+        { input: "shampo", normalizedItem: "shampoo", isSafe: true },
+        { input: "banana", normalizedItem: "banana", isSafe: true }
+      ],
+      suggestions: [
+        {
+          title: "Banana Sensory Play",
+          domain: "cognitive",
+          durationMinutes: 10,
+          setting: "indoor",
+          usedMaterials: ["banana"],
+          instructions: ["Place the banana on a clean mat.", "Let your toddler touch it."],
+          safetyNotice: "Supervise closely.",
+          whyPicked: "Gentle indoor play."
+        }
+      ]
+    }));
+
+    const res = await recommend(
+      {
+        ageBand: "12-23m",
+        setting: "indoor",
+        timeMinutes: 15,
+        materials: ["banana", "shampo"],
+        language: "en",
+        count: 3,
+        allowCustom: true
+      },
+      leakyProvider
+    );
+
+    expect(res.source).toBe("catalog_fallback");
+    expect(res.tier).toBe(3);
+    expect(res.provenance.reviewed).toBe(true);
+  });
+
+  it("falls back cleanly to reviewed catalog with safety note when Gemini marks all items unsafe", async () => {
+    const provider = new FakeProvider(() => ({
+      materialAssessments: [
+        { input: "shampo", normalizedItem: "shampoo", isSafe: false, reason: "liquid soap" },
+        { input: "cap", normalizedItem: "bottle cap", isSafe: false, reason: "choking hazard" }
+      ],
+      suggestions: []
+    }));
+
+    const res = await recommend(
+      {
+        ageBand: "12-23m",
+        setting: "indoor",
+        timeMinutes: 15,
+        materials: ["shampo", "cap"],
+        language: "en",
+        count: 3,
+        allowCustom: true
+      },
+      provider
+    );
+
+    expect(res.source).toBe("catalog_fallback");
+    expect(res.tier).toBe(3);
+    expect(res.provenance.reviewed).toBe(true);
+    expect(res.materialNote).toBe(
+      "Skipped shampoo, bottle cap because they aren't safe for young children to handle or mouth. Here are reviewed play ideas for this age instead."
+    );
+    expect(res.suggestions.length).toBeGreaterThan(0);
   });
 });

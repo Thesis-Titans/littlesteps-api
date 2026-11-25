@@ -70,6 +70,19 @@ export const ADAPT_RESPONSE_SCHEMA = {
 export const CUSTOM_PLAY_RESPONSE_SCHEMA = {
   type: t("OBJECT"),
   properties: {
+    materialAssessments: {
+      type: t("ARRAY"),
+      items: {
+        type: t("OBJECT"),
+        properties: {
+          input: { type: t("STRING") },
+          normalizedItem: { type: t("STRING") },
+          isSafe: { type: t("BOOLEAN") },
+          reason: { type: t("STRING") }
+        },
+        required: ["input", "normalizedItem", "isSafe"]
+      }
+    },
     suggestions: {
       type: t("ARRAY"),
       items: {
@@ -98,7 +111,7 @@ export const CUSTOM_PLAY_RESPONSE_SCHEMA = {
     },
     materialNote: { type: t("STRING") }
   },
-  required: ["suggestions"]
+  required: ["materialAssessments", "suggestions"]
 };
 
 export function resolveResponseSchema(prompt: string): Record<string, unknown> {

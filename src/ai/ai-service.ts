@@ -143,10 +143,46 @@ export async function recommend(
         const reply = await callWithTimeout(provider, customPrompt, timeoutMs);
         const validated = validateCustomPlayOutput(reply, request.ageBand, request.count);
         if (validated) {
+          // Merge Layer 1 extreme-blocked inputs with Layer 2 model-rejected items (using clean normalized names).
+          const combinedSkipped: string[] = [];
+          const seenSkipped = new Set<string>();
+          for (const item of skippedUnsafe) {
+            const key = item.toLowerCase();
+            if (!seenSkipped.has(key)) {
+              seenSkipped.add(key);
+              combinedSkipped.push(item);
+            }
+          }
+          for (const a of validated.materialAssessments) {
+            if (!a.isSafe) {
+              const label = a.normalizedItem.trim() || a.input.trim();
+              const key = label.toLowerCase();
+              if (label && !seenSkipped.has(key)) {
+                seenSkipped.add(key);
+                combinedSkipped.push(label);
+              }
+            }
+          }
+
+          if (validated.suggestions.length === 0) {
+            // Model judged every provided material unsafe; fall back cleanly to reviewed catalog picks with safety note.
+            const allSkippedNote = combinedSkipped.length > 0
+              ? buildMaterialSafetyNote([], combinedSkipped)
+              : validated.materialNote;
+            const ranked = rankActivities(approved, request, []);
+            return fallbackResponse(
+              ranked.map((activity) => ({
+                activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+              })),
+              undefined,
+              allSkippedNote
+            );
+          }
+
           logEvent("ai.custom_ok", 1, startedAt);
           const actualUsed = collectActualUsedMaterials(validated.suggestions);
-          const finalNote = skippedUnsafe.length > 0
-            ? buildMaterialSafetyNote(actualUsed.length > 0 ? actualUsed : safeMaterials, skippedUnsafe)
+          const finalNote = combinedSkipped.length > 0
+            ? buildMaterialSafetyNote(actualUsed.length > 0 ? actualUsed : safeMaterials, combinedSkipped)
             : validated.materialNote;
           return {
             suggestions: validated.suggestions.map((item, idx) => {
