@@ -42,6 +42,7 @@ export default tseslint.config(
       sourceType: "module",
       globals: {
         console: "readonly",
+        fetch: "readonly",
         process: "readonly"
       }
     }
