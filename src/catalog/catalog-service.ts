@@ -3,10 +3,21 @@ import {
   type BookItem,
   type BooksResponse,
   type CatalogActivitiesQuery,
-  type CatalogActivity
+  type CatalogActivity,
+  type CatalogMilestone,
+  type CatalogMilestonesQuery,
+  type CatalogRhyme,
+  type CatalogRhymesQuery
 } from "./types.js";
 import { FALLBACK_BOOKS } from "./fixtures/books.fallback.js";
-import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
+import {
+  createInMemoryCatalogStore,
+  createInMemoryMilestoneCatalogStore,
+  createInMemoryRhymeCatalogStore,
+  type CatalogStore,
+  type MilestoneCatalogStore,
+  type RhymeCatalogStore
+} from "./catalog-store.js";
 
 interface CacheEntry {
   timestamp: number;
@@ -51,43 +62,71 @@ function validateActivities(activities: CatalogActivity[]): CatalogActivity[] {
   });
 }
 
-// Production starts empty: no reviewed content exists yet, and synthetic fixtures must never be served.
-// Test-only: tests inject fixtures via setCatalogActivities(); production never calls it.
-// Issue #45: SERVE_SYNTHETIC_CATALOG=true loads synthetic fixtures for demo/staging builds (off by default).
-let activitiesStore: CatalogActivity[] =
-  process.env.SERVE_SYNTHETIC_CATALOG === "true" ? validateActivities(SYNTHETIC_ACTIVITIES) : [];
+// Default to an empty in-memory store for isolated unit tests.
+// Production and local Firebase emulators wire createFirestoreCatalogStore() in src/index.ts.
+let catalogStore: CatalogStore = createInMemoryCatalogStore([]);
+let milestoneCatalogStore: MilestoneCatalogStore = createInMemoryMilestoneCatalogStore([]);
+let rhymeCatalogStore: RhymeCatalogStore = createInMemoryRhymeCatalogStore([]);
+
+export function setCatalogStore(store: CatalogStore): void {
+  catalogStore = store;
+}
+
+export function getCatalogStore(): CatalogStore {
+  return catalogStore;
+}
+
+export function setMilestoneCatalogStore(store: MilestoneCatalogStore): void {
+  milestoneCatalogStore = store;
+}
+
+export function getMilestoneCatalogStore(): MilestoneCatalogStore {
+  return milestoneCatalogStore;
+}
+
+export function setRhymeCatalogStore(store: RhymeCatalogStore): void {
+  rhymeCatalogStore = store;
+}
+
+export function getRhymeCatalogStore(): RhymeCatalogStore {
+  return rhymeCatalogStore;
+}
 
 /** Builds the Open Library User-Agent; the contact is limited to printable ASCII so fetch never rejects the header. */
 export function buildUserAgent(contact: string | undefined): string {
   const clean = (contact ?? "").replace(/[^\x20-\x7E]/g, "").trim();
   return clean
-    ? `LittleSteps-API/0.2.0 (Thesis Academic Project; contact: ${clean})`
-    : "LittleSteps-API/0.2.0 (Thesis Academic Project)";
+    ? `LittleSteps-API/0.2.0 (LittleSteps Early Childhood App; contact: ${clean})`
+    : "LittleSteps-API/0.2.0 (LittleSteps Early Childhood App)";
 }
 
+/** Test-only: injects validated synthetic fixtures into an in-memory store. */
 export function setCatalogActivities(items: CatalogActivity[]): void {
-  activitiesStore = validateActivities(items);
+  catalogStore = createInMemoryCatalogStore(validateActivities(items));
 }
 
-/** Only reviewed_approved items; the sole read path other modules (such as AI suggestions) may use.
- * In local demo/development mode when DEMO_ALLOW_SYNTHETIC_AI=true, loaded activities may be evaluated by Gemini.
+/**
+ * Returns activities eligible for AI recommendations and catalog fallback.
+ * Excludes `synthetic_fixture` and `draft` items so unverified test fixtures are never served.
  */
-export function getApprovedActivities(): CatalogActivity[] {
-  if (process.env.DEMO_ALLOW_SYNTHETIC_AI === "true") {
-    return activitiesStore;
-  }
-  return activitiesStore.filter((item) => item.status === "reviewed_approved");
+export async function getApprovedActivities(): Promise<CatalogActivity[]> {
+  const items = await catalogStore.list();
+  return items.filter(
+    (item) => item.status === "reviewed_approved" || item.status === "source_checked"
+  );
 }
 
 /** Test-only: loads approved items without the fixture guard. Does nothing outside NODE_ENV=test. */
 export function setApprovedActivitiesForTest(items: CatalogActivity[]): void {
   if (process.env.NODE_ENV !== "test") return;
-  activitiesStore = items.map((item) => CatalogActivitySchema.parse(item));
+  catalogStore = createInMemoryCatalogStore(items.map((item) => CatalogActivitySchema.parse(item)));
 }
 const fallbackBooks: BookItem[] = FALLBACK_BOOKS;
 
-export function getCatalogActivities(query: CatalogActivitiesQuery): { total: number; items: CatalogActivity[] } {
-  let filtered = activitiesStore;
+export async function getCatalogActivities(
+  query: CatalogActivitiesQuery
+): Promise<{ total: number; items: CatalogActivity[] }> {
+  let filtered = await catalogStore.list();
 
   if (query.ageBand) {
     filtered = filtered.filter((item) => item.ageBand === query.ageBand);
@@ -114,8 +153,47 @@ export function getCatalogActivities(query: CatalogActivitiesQuery): { total: nu
   };
 }
 
-export function getCatalogActivityById(id: string): CatalogActivity | undefined {
-  return activitiesStore.find((item) => item.id === id);
+export async function getCatalogActivityById(id: string): Promise<CatalogActivity | undefined> {
+  const item = await catalogStore.get(id);
+  return item ?? undefined;
+}
+
+export async function getCatalogMilestones(
+  query: CatalogMilestonesQuery
+): Promise<{ total: number; items: CatalogMilestone[] }> {
+  let filtered = await milestoneCatalogStore.list();
+
+  if (query.ageBand) {
+    filtered = filtered.filter((item) => item.ageBand === query.ageBand);
+  }
+  if (query.domain) {
+    filtered = filtered.filter((item) => item.domain === query.domain);
+  }
+
+  const limit = query.limit ?? 50;
+  return {
+    total: filtered.length,
+    items: filtered.slice(0, limit)
+  };
+}
+
+export async function getCatalogRhymes(
+  query: CatalogRhymesQuery
+): Promise<{ total: number; items: CatalogRhyme[] }> {
+  let filtered = await rhymeCatalogStore.list();
+
+  if (query.domain) {
+    filtered = filtered.filter((item) => item.domain === query.domain);
+  }
+  if (query.language) {
+    filtered = filtered.filter((item) => item.language === query.language);
+  }
+
+  const limit = query.limit ?? 50;
+  return {
+    total: filtered.length,
+    items: filtered.slice(0, limit)
+  };
 }
 
 function setBooksCache(key: string, entry: CacheEntry): void {

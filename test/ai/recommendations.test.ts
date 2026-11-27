@@ -152,13 +152,13 @@ describe("POST /api/v1/ai/recommendations", () => {
 });
 
 describe("setApprovedActivitiesForTest", () => {
-  it("does nothing when NODE_ENV is not test", () => {
+  it("does nothing when NODE_ENV is not test", async () => {
     const prior = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     try {
       setCatalogActivities([]);
       setApprovedActivitiesForTest([approved({ id: "z" })]);
-      expect(getApprovedActivities()).toEqual([]);
+      expect(await getApprovedActivities()).toEqual([]);
     } finally {
       process.env.NODE_ENV = prior;
     }

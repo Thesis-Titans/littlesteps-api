@@ -23,7 +23,7 @@ export type Language = z.infer<typeof LanguageSchema>;
 export const SettingSchema = z.enum(["indoor", "outdoor", "either"]);
 export type Setting = z.infer<typeof SettingSchema>;
 
-export const ReviewStatusSchema = z.enum(["reviewed_approved", "synthetic_fixture", "draft"]);
+export const ReviewStatusSchema = z.enum(["reviewed_approved", "source_checked", "synthetic_fixture", "draft"]);
 export type ReviewStatus = z.infer<typeof ReviewStatusSchema>;
 
 export const CatalogActivitySchema = z.object({
@@ -56,6 +56,53 @@ export const CatalogActivitiesQuerySchema = z.object({
   ).default(20)
 });
 export type CatalogActivitiesQuery = z.infer<typeof CatalogActivitiesQuerySchema>;
+
+export const CatalogMilestoneSchema = z.object({
+  id: z.string().min(1),
+  domain: DomainSchema,
+  title: z.string().min(1).max(160),
+  lookFor: z.array(z.string().min(1)).min(1),
+  ageBand: z.string().min(1).max(32),
+  provenance: z.string().min(1),
+  status: ReviewStatusSchema
+});
+export type CatalogMilestone = z.infer<typeof CatalogMilestoneSchema>;
+
+export const CatalogMilestonesQuerySchema = z.object({
+  ageBand: z.string().trim().min(1).max(32).optional(),
+  domain: DomainSchema.optional(),
+  limit: z.preprocess(
+    (value) => (value !== undefined ? Number(value) : 50),
+    z.number().int().min(1).max(100)
+  ).default(50)
+});
+export type CatalogMilestonesQuery = z.infer<typeof CatalogMilestonesQuerySchema>;
+
+export const CatalogRhymeSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(120),
+  subtitle: z.string().min(1).max(200),
+  domain: DomainSchema,
+  domainLabel: z.string().min(1).max(40),
+  language: LanguageSchema,
+  lyrics: z.array(z.string().min(1)).min(1),
+  actionPrompt: z.string().min(1),
+  materials: z.array(z.string()).default(["None required"]),
+  durationMinutes: z.number().int().min(1).max(60).default(5),
+  provenanceSource: z.string().min(1),
+  status: ReviewStatusSchema
+});
+export type CatalogRhyme = z.infer<typeof CatalogRhymeSchema>;
+
+export const CatalogRhymesQuerySchema = z.object({
+  domain: DomainSchema.optional(),
+  language: LanguageSchema.optional(),
+  limit: z.preprocess(
+    (value) => (value !== undefined ? Number(value) : 50),
+    z.number().int().min(1).max(100)
+  ).default(50)
+});
+export type CatalogRhymesQuery = z.infer<typeof CatalogRhymesQuerySchema>;
 
 export const BookItemSchema = z.object({
   id: z.string(),

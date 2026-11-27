@@ -313,13 +313,13 @@ describe("Learning Catalog API (/api/v1/catalog)", () => {
 describe("Open Library User-Agent", () => {
   it("adds a clean contact", () => {
     expect(buildUserAgent("team@example.org")).toBe(
-      "LittleSteps-API/0.2.0 (Thesis Academic Project; contact: team@example.org)"
+      "LittleSteps-API/0.2.0 (LittleSteps Early Childhood App; contact: team@example.org)"
     );
   });
 
   it("drops control and non-ASCII characters and falls back when empty", () => {
     expect(buildUserAgent("a@b.org\r\nX-Evil: 1")).not.toMatch(/[\r\n]/);
-    expect(buildUserAgent("\r\n")).toBe("LittleSteps-API/0.2.0 (Thesis Academic Project)");
-    expect(buildUserAgent(undefined)).toBe("LittleSteps-API/0.2.0 (Thesis Academic Project)");
+    expect(buildUserAgent("\r\n")).toBe("LittleSteps-API/0.2.0 (LittleSteps Early Childhood App)");
+    expect(buildUserAgent(undefined)).toBe("LittleSteps-API/0.2.0 (LittleSteps Early Childhood App)");
   });
 });

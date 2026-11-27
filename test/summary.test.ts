@@ -17,6 +17,9 @@ import { setPlansStore } from "../src/activities/activities-router.js";
 import { createMemoryPlansStore } from "../src/activities/activities-store.js";
 import { setMilestonesStore } from "../src/milestones/milestones-router.js";
 import { createMemoryMilestonesStore } from "../src/milestones/milestones-store.js";
+import { setCatalogStore } from "../src/catalog/catalog-service.js";
+import { createInMemoryCatalogStore } from "../src/catalog/catalog-store.js";
+import { SYNTHETIC_ACTIVITIES } from "./fixtures/catalog-activities.synthetic.js";
 import type { StoredChild } from "../src/children/types.js";
 import { currentIsoWeek, isoWeekBounds } from "../src/summary/summary-service.js";
 
@@ -37,6 +40,7 @@ beforeEach(async () => {
   setPlansStore(plansStore);
   milestonesStore = createMemoryMilestonesStore();
   setMilestonesStore(milestonesStore);
+  setCatalogStore(createInMemoryCatalogStore(SYNTHETIC_ACTIVITIES));
 
   const now = new Date().toISOString();
   childA = {

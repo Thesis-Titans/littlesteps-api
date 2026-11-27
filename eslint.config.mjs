@@ -3,7 +3,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["lib/**", "node_modules/**"]
+    ignores: [
+      "lib/**",
+      "node_modules/**",
+      "coverage/**",
+      "emulator-data/**",
+      "firebase-export-*/**"
+    ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -27,6 +33,17 @@ export default tseslint.config(
           allowDeclarations: true
         }
       ]
+    }
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly"
+      }
     }
   }
 );
