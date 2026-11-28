@@ -1,7 +1,5 @@
 import type { StoredPlan } from "../activities/types.js";
-import { getCatalogActivityById } from "../catalog/catalog-service.js";
-import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
-import type { Domain } from "../catalog/types.js";
+import type { CatalogActivity, Domain } from "../catalog/types.js";
 import type { StoredMilestoneObservation } from "../milestones/types.js";
 import type { DomainDistribution, WeeklySummary } from "./types.js";
 
@@ -54,14 +52,14 @@ export function currentIsoWeek(now = new Date()): string {
 
 /**
  * Resolves an activity's developmental domain.
- * Looks up catalog store first, then fallback synthetic fixtures, then domain identifiers.
+ * Looks up the loaded catalog map first, then falls back to domain identifiers in the ID.
  */
-export function resolveActivityDomain(activityId: string): Domain | undefined {
-  const fromCatalog = getCatalogActivityById(activityId);
+export function resolveActivityDomain(
+  activityId: string,
+  catalogById?: ReadonlyMap<string, CatalogActivity>
+): Domain | undefined {
+  const fromCatalog = catalogById?.get(activityId);
   if (fromCatalog) return fromCatalog.domain;
-
-  const fromSynthetic = SYNTHETIC_ACTIVITIES.find((a) => a.id === activityId);
-  if (fromSynthetic) return fromSynthetic.domain;
 
   if (/(?:^|[-_])(?:cog|cognitive)(?:[-_]|$)/i.test(activityId)) return "cognitive";
   if (/(?:^|[-_])(?:mot|motor)(?:[-_]|$)/i.test(activityId)) return "motor";
@@ -98,7 +96,8 @@ export function computeWeeklySummary(
   weekStart: string,
   weekEnd: string,
   weekId: string,
-  now = new Date()
+  now = new Date(),
+  catalogById?: ReadonlyMap<string, CatalogActivity>
 ): WeeklySummary {
   // Filter plans scheduled within the week window
   const weekPlans = plans.filter((p) => p.scheduledDate >= weekStart && p.scheduledDate <= weekEnd);
@@ -118,7 +117,7 @@ export function computeWeeklySummary(
   };
 
   for (const plan of completedPlans) {
-    const domain = plan.customActivity?.domain ?? resolveActivityDomain(plan.activityId);
+    const domain = plan.customActivity?.domain ?? resolveActivityDomain(plan.activityId, catalogById);
     if (domain && domain in domainDistribution) {
       domainDistribution[domain]++;
     }

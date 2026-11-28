@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { getChildrenStore } from "../children/children-router.js";
 import { getPlansStore } from "../activities/activities-router.js";
 import { getMilestonesStore } from "../milestones/milestones-router.js";
+import { getCatalogStore } from "../catalog/catalog-service.js";
 import { SummaryQuerySchema, toErrorDetails } from "./schemas.js";
 import {
   computeWeeklySummary,
@@ -40,8 +41,12 @@ summaryRouter.get("/weekly", async (request, response) => {
   const weekId = parsed.data.week ?? currentIsoWeek(now);
   const bounds = isoWeekBounds(weekId);
 
-  const plans = await getPlansStore().list(uidOf(request), childId);
-  const milestones = await getMilestonesStore().list(uidOf(request), childId);
+  const [plans, milestones, catalogItems] = await Promise.all([
+    getPlansStore().list(uidOf(request), childId),
+    getMilestonesStore().list(uidOf(request), childId),
+    getCatalogStore().list()
+  ]);
+  const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
 
   const summary = computeWeeklySummary(
     plans,
@@ -49,7 +54,8 @@ summaryRouter.get("/weekly", async (request, response) => {
     bounds.weekStart,
     bounds.weekEnd,
     weekId,
-    now
+    now,
+    catalogById
   );
 
   response.status(200).json(summary);

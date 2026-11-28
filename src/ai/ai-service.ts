@@ -1,5 +1,4 @@
-import { getApprovedActivities } from "../catalog/catalog-service.js";
-import { SYNTHETIC_ACTIVITIES } from "../catalog/fixtures/catalog-activities.synthetic.js";
+import { getApprovedActivities, getCatalogActivityById } from "../catalog/catalog-service.js";
 import type { CatalogActivity } from "../catalog/types.js";
 import { cleanMaterials, screenMaterialsForSafety } from "./sanitize.js";
 import { buildAdaptPrompt, buildCustomPlayPrompt, buildPrompt, buildStoryPrompt } from "./prompt.js";
@@ -109,7 +108,7 @@ export async function recommend(
   timeoutMs = PROVIDER_TIMEOUT_MS
 ): Promise<RecommendationResponse> {
   const startedAt = Date.now();
-  const approved = getApprovedActivities();
+  const approved = await getApprovedActivities();
   if (approved.length === 0) {
     logEvent("ai.no_reviewed_content", 3, startedAt);
     return fallbackResponse([], "NO_REVIEWED_CONTENT");
@@ -295,9 +294,11 @@ export async function recommend(
 /**
  * Deterministically finds a matching catalog activity based on ageBand and book subjects.
  */
-export function findStoryFallbackActivity(ageBand: string, subjects?: string[]): StoryActivitySuggestion {
-  const approved = getApprovedActivities();
-  const pool = approved.length > 0 ? approved : SYNTHETIC_ACTIVITIES;
+export async function findStoryFallbackActivity(
+  ageBand: string,
+  subjects?: string[]
+): Promise<StoryActivitySuggestion> {
+  const pool = await getApprovedActivities();
 
   const eligible = pool.filter((a) => a.ageBand === ageBand);
   const candidatePool = eligible.length > 0 ? eligible : pool;
@@ -371,7 +372,7 @@ export async function suggestStoryActivity(
   }
 
   logEvent("ai.story_fallback", 3, startedAt);
-  const fallback = findStoryFallbackActivity(request.ageBand, request.subjects);
+  const fallback = await findStoryFallbackActivity(request.ageBand, request.subjects);
   return {
     bookTitle,
     suggestion: fallback,
@@ -395,9 +396,10 @@ export async function adaptActivity(
   timeoutMs = PROVIDER_TIMEOUT_MS
 ): Promise<AdaptActivityResponse | null> {
   const startedAt = Date.now();
-  const approved = getApprovedActivities();
-  const pool = approved.length > 0 ? approved : SYNTHETIC_ACTIVITIES;
-  const activity = pool.find((a) => a.id === request.activityId);
+  const approved = await getApprovedActivities();
+  const activity =
+    approved.find((a) => a.id === request.activityId) ??
+    (await getCatalogActivityById(request.activityId));
 
   if (!activity) {
     return null;

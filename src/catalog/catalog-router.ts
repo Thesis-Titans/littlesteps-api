@@ -2,12 +2,16 @@ import { Router, type Request, type Response } from "express";
 import {
   getCatalogActivities,
   getCatalogActivityById,
+  getCatalogMilestones,
+  getCatalogRhymes,
   getBooksCatalog,
   searchBooksCatalog
 } from "./catalog-service.js";
 import { getWeatherForecast } from "./weather-service.js";
 import {
   CatalogActivitiesQuerySchema,
+  CatalogMilestonesQuerySchema,
+  CatalogRhymesQuerySchema,
   BooksQuerySchema,
   BooksSearchQuerySchema,
   WeatherQuerySchema,
@@ -16,7 +20,7 @@ import {
 
 const catalogRouter = Router();
 
-catalogRouter.get("/activities", (request: Request, response: Response) => {
+catalogRouter.get("/activities", async (request: Request, response: Response) => {
   const queryResult = CatalogActivitiesQuerySchema.safeParse(request.query);
 
   if (!queryResult.success) {
@@ -30,12 +34,12 @@ catalogRouter.get("/activities", (request: Request, response: Response) => {
     return;
   }
 
-  const result = getCatalogActivities(queryResult.data);
+  const result = await getCatalogActivities(queryResult.data);
   response.setHeader("Cache-Control", "public, max-age=3600");
   response.status(200).json(result);
 });
 
-catalogRouter.get("/activities/:id", (request: Request, response: Response) => {
+catalogRouter.get("/activities/:id", async (request: Request, response: Response) => {
   const rawId = request.params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   if (!CatalogIdParamSchema.safeParse(id).success) {
@@ -49,7 +53,7 @@ catalogRouter.get("/activities/:id", (request: Request, response: Response) => {
     return;
   }
 
-  const item = getCatalogActivityById(id as string);
+  const item = await getCatalogActivityById(id as string);
 
   if (!item) {
     response.status(404).json({
@@ -63,6 +67,44 @@ catalogRouter.get("/activities/:id", (request: Request, response: Response) => {
 
   response.setHeader("Cache-Control", "public, max-age=3600");
   response.status(200).json(item);
+});
+
+catalogRouter.get("/milestones", async (request: Request, response: Response) => {
+  const queryResult = CatalogMilestonesQuerySchema.safeParse(request.query);
+
+  if (!queryResult.success) {
+    response.status(400).json({
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid milestone catalog query parameters",
+        details: queryResult.error.issues.map((i) => ({ field: i.path.join("."), issue: i.message }))
+      }
+    });
+    return;
+  }
+
+  const result = await getCatalogMilestones(queryResult.data);
+  response.setHeader("Cache-Control", "public, max-age=3600");
+  response.status(200).json(result);
+});
+
+catalogRouter.get("/rhymes", async (request: Request, response: Response) => {
+  const queryResult = CatalogRhymesQuerySchema.safeParse(request.query);
+
+  if (!queryResult.success) {
+    response.status(400).json({
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid rhymes catalog query parameters",
+        details: queryResult.error.issues.map((i) => ({ field: i.path.join("."), issue: i.message }))
+      }
+    });
+    return;
+  }
+
+  const result = await getCatalogRhymes(queryResult.data);
+  response.setHeader("Cache-Control", "public, max-age=3600");
+  response.status(200).json(result);
 });
 
 catalogRouter.get("/books", async (request: Request, response: Response) => {

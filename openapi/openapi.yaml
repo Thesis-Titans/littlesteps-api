@@ -297,6 +297,128 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /api/v1/catalog/milestones:
+    get:
+      operationId: listCatalogMilestones
+      summary: List reference developmental milestone prompts
+      description: >-
+        Returns non-diagnostic developmental milestone observation prompts backed by the Firestore
+        `catalog_milestones` collection with a 5-minute server-side TTL cache. Filterable by age band
+        and developmental domain.
+      x-requirement: FR-04
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - name: ageBand
+          in: query
+          required: false
+          description: Developmental age band label (e.g. `0-11 months`, `12-23 months`, `60-71 months`)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 32
+        - name: domain
+          in: query
+          required: false
+          description: Developmental domain filter
+          schema:
+            $ref: '#/components/schemas/Domain'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum prompts to return (default 50, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Filtered milestone prompts
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, items]
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CatalogMilestone'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/catalog/rhymes:
+    get:
+      operationId: listCatalogRhymes
+      summary: List Philippine traditional rhymes and action songs
+      description: >-
+        Returns curated Filipino, English, and Hiligaynon rhymes and action songs backed by the
+        Firestore `catalog_rhymes` collection with a 5-minute server-side TTL cache. Filterable by
+        developmental domain and language code.
+      x-requirement: FR-04
+      x-implementation-status: implemented
+      security: []
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          description: Developmental domain filter
+          schema:
+            $ref: '#/components/schemas/Domain'
+        - name: language
+          in: query
+          required: false
+          description: Language filter (`en`, `fil`, `hil`)
+          schema:
+            $ref: '#/components/schemas/Language'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum rhymes to return (default 50, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Filtered rhymes and action songs
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, items]
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CatalogRhyme'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
   /api/v1/catalog/books:
     get:
       operationId: listCatalogBooks
@@ -1743,6 +1865,7 @@ components:
       type: string
       enum:
         - reviewed_approved
+        - source_checked
         - synthetic_fixture
         - draft
 
@@ -1804,12 +1927,102 @@ components:
             - Encourage child to act out everyday household routines.
         provenanceSource:
           type: string
-          example: Synthetic engineering fixture; no external source
+          example: Philippine ECCD Council NELF (2010) & NELC Learning Resource Package 3 (2015)
         status:
           $ref: '#/components/schemas/ReviewStatus'
         limitations:
           type: string
-          example: Provisional Academic Reference — Pending Review. Educational prompt only; not a diagnostic assessment.
+          example: Educational guidance only; not a clinical or diagnostic tool.
+
+    CatalogMilestone:
+      type: object
+      required:
+        - id
+        - domain
+        - title
+        - lookFor
+        - ageBand
+        - provenance
+        - status
+      properties:
+        id:
+          type: string
+          example: lan-36-01
+        domain:
+          $ref: '#/components/schemas/Domain'
+        title:
+          type: string
+          example: Speaks in 3–4 word sentences
+        lookFor:
+          type: array
+          items:
+            type: string
+          example:
+            - Combines words to ask simple questions
+            - Easily understood by family members most of the time
+        ageBand:
+          type: string
+          example: 36-47 months
+        provenance:
+          type: string
+          example: ECCD Checklist (2010) & CDC Learn the Signs
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+
+    CatalogRhyme:
+      type: object
+      required:
+        - id
+        - title
+        - subtitle
+        - domain
+        - domainLabel
+        - language
+        - lyrics
+        - actionPrompt
+        - materials
+        - durationMinutes
+        - provenanceSource
+        - status
+      properties:
+        id:
+          type: string
+          example: rhyme-bahay-kubo
+        title:
+          type: string
+          example: Bahay Kubo
+        subtitle:
+          type: string
+          example: Traditional Filipino folk song — vocabulary & rhythm
+        domain:
+          $ref: '#/components/schemas/Domain'
+        domainLabel:
+          type: string
+          example: Language
+        language:
+          $ref: '#/components/schemas/Language'
+        lyrics:
+          type: array
+          items:
+            type: string
+        actionPrompt:
+          type: string
+          example: Count each vegetable on your child's fingers and act out planting seeds together.
+        materials:
+          type: array
+          items:
+            type: string
+          example: ["None required"]
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 60
+          example: 5
+        provenanceSource:
+          type: string
+          example: Philippine traditional folk rhyme; aligned with ECCD NELF (2010)
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
 
     BookItem:
       type: object

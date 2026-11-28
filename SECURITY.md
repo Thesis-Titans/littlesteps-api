@@ -34,7 +34,7 @@ Please report vulnerabilities privately through either channel:
 ## API security boundaries and threat model
 
 ### Broken Object Level Authorization (BOLA)
-- Every child-scoped endpoint (`/api/v1/children/:childId/*`) validates that the requesting caregiver (`req.user.uid`) owns the target child record in Firestore before returning or mutating data.
+- Every child-scoped endpoint (`/api/v1/children/:childId/*`) validates that the requesting caregiver (`request.firebaseUser.uid`) owns the target child record in Firestore before returning or mutating data.
 - Unauthorized attempts to access child records owned by another caregiver return `404 RESOURCE_NOT_FOUND` to prevent identity enumeration.
 
 ### Token verification

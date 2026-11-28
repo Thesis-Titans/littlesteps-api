@@ -2,7 +2,29 @@
   "functions": {
     "source": ".",
     "runtime": "nodejs22",
-    "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", ".env", ".env.*"]
+    "ignore": [
+      "node_modules",
+      ".git",
+      ".github",
+      ".env",
+      ".env.*",
+      "*.md",
+      "*-debug.log",
+      "firebase-debug*.log",
+      "firestore-debug*.log",
+      "coverage",
+      "docs",
+      "emulator-data",
+      ".emulator-data",
+      "firebase-export-*",
+      "openapi",
+      "scripts",
+      "seed",
+      "test",
+      "eslint.config.mjs",
+      "lefthook.yml",
+      "tsconfig.json"
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",

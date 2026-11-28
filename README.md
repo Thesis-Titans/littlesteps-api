@@ -62,6 +62,9 @@ For interactive local testing with web and mobile clients:
 ```bash
 # Start local Firebase Emulators (Functions, Auth, Firestore)
 npm run emulators -- --project demo-littlesteps
+
+# In a second terminal, seed the Firestore emulator `catalog_activities` collection
+npm run seed:catalog:emulator
 ```
 
 > [!NOTE]
@@ -73,7 +76,7 @@ npm run emulators -- --project demo-littlesteps
 
 The technical contract is specified in [`openapi/openapi.yaml`](openapi/openapi.yaml) and documented in [`docs/api-reference.md`](https://github.com/Thesis-Titans/littlesteps-docs/blob/main/docs/api-reference.md).
 
-All authenticated routes require a Firebase ID token sent in the `Authorization: Bearer <token>` header. Identity (`req.user.uid`) is derived exclusively from server-side token verification.
+All authenticated routes require a Firebase ID token sent in the `Authorization: Bearer <token>` header. Identity (`request.firebaseUser.uid`) is derived exclusively from server-side token verification.
 
 ### Health and caregiver account
 - `GET /health` — Public liveness health check probe.
@@ -82,10 +85,18 @@ All authenticated routes require a Firebase ID token sent in the `Authorization:
 - `DELETE /api/v1/me` — Permanently deletes caregiver profile, child subcollections, and Firebase Auth account (RA 10173 right to erasure).
 
 ### Learning catalog and external integrations (public, cacheable)
-- `GET /api/v1/catalog/activities` — Age-aware activity catalog (`Cache-Control: public, max-age=3600`).
+- `GET /api/v1/catalog/activities` — Age-aware activity catalog backed by Firestore `catalog_activities` with 5-minute server-side TTL cache (`Cache-Control: public, max-age=3600`).
 - `GET /api/v1/catalog/activities/{id}` — Single catalog activity details.
+- `GET /api/v1/catalog/milestones` — Reference developmental milestone prompts backed by Firestore `catalog_milestones` (`0-11 months` through `60-71 months`, 5-minute server-side TTL cache).
+- `GET /api/v1/catalog/rhymes` — Philippine traditional rhymes and action songs backed by Firestore `catalog_rhymes` (`en`, `fil`, `hil`, 5-minute server-side TTL cache).
 - `GET /api/v1/catalog/books` — Open Library picture books proxy with bounded subject validation, local cache (`X-Cache`), and offline fallback.
+- `GET /api/v1/catalog/books/search` — Open Library search proxy with query validation and fallback.
 - `GET /api/v1/catalog/weather` — Weather-adaptive play recommendations based on local climate conditions.
+
+### Saved family storybooks (FR-04b)
+- `GET /api/v1/children/{childId}/books` — List storybooks saved to a child's bookshelf.
+- `POST /api/v1/children/{childId}/books` — Save a storybook to a child's bookshelf.
+- `DELETE /api/v1/children/{childId}/books/{bookId}` — Remove a saved storybook.
 
 ### Child profile management (FR-01)
 - `GET /api/v1/children` — List children registered to the authenticated caregiver.
@@ -130,12 +141,20 @@ Play-idea routes fall back from Cloud Gemini (Tier 1) directly to Deterministic 
 littlesteps-api/
 ├── openapi/
 │   └── openapi.yaml           # Canonical OpenAPI 3.1.0 specification
+├── scripts/
+│   └── seed-catalog.mjs       # Idempotent Firestore catalog seed script (activities, milestones, rhymes)
+├── seed/
+│   ├── catalog-activities.json # Curated source-checked activity seed dataset
+│   ├── catalog-milestones.json # Reference milestone prompts seed dataset
+│   └── catalog-rhymes.json     # Philippine traditional rhymes seed dataset
 ├── src/
 │   ├── account/               # Identity, export, and account deletion
 │   ├── activities/            # Routine play planning routes and store
 │   ├── ai/                    # AI helpers, Gemini provider, and fallback engine
-│   ├── catalog/               # Activity catalog, Open Library proxy, weather hint
+│   ├── books/                 # Child-scoped saved bookshelf routes and store
+│   ├── catalog/               # Firestore activity catalog, Open Library proxy, weather hint
 │   ├── children/              # Child profile management and age calculation
+│   ├── health/                # Liveness and readiness health check handlers
 │   ├── journal/               # Private observation journal routes and store
 │   ├── middleware/            # Firebase Auth Bearer token verification
 │   ├── milestones/            # Milestone observation routes and store
@@ -154,7 +173,8 @@ littlesteps-api/
 ## AI provider and safety guardrails
 
 ### Provider configuration
-- **Required environment variables:** `GEMINI_API_KEY` and an explicit pinned stable `GEMINI_MODEL` (e.g., `gemini-3.5-flash-lite`; avoid floating `-latest` aliases in production). For local demo mode with synthetic catalog fixtures, also set `SERVE_SYNTHETIC_CATALOG=true` and `DEMO_ALLOW_SYNTHETIC_AI=true`.
+- **Required environment variables:** `GEMINI_API_KEY` and an explicit pinned stable `GEMINI_MODEL` (e.g., `gemini-3.5-flash-lite`; avoid floating `-latest` aliases in production).
+- **Activity catalog:** Loaded from the Firestore `catalog_activities` collection (`npm run seed:catalog:emulator` for local emulators; `npm run seed:catalog:prod` for Cloud Firestore). Only `reviewed_approved` and `source_checked` items are eligible for AI recommendations.
 - When variables are unset or the provider times out (8-second abort signal), the engine automatically falls back to deterministic catalog matching with HTTP 200.
 - Circuit breaker trips after 3 consecutive external provider failures, routing requests directly to the fallback engine for 60 seconds.
 
@@ -177,10 +197,9 @@ Deploy composite indexes before running queries that filter and sort on subcolle
 firebase deploy --only firestore:indexes
 ```
 
-Defined indexes in `firestore.indexes.json`:
+Defined indexes in `firestore.indexes.json` (7 composite indexes):
 - `plans`: `(status ASC, scheduledDate ASC/DESC)`
-- `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`
-- `journal_entries`: `(entryDate DESC, createdAt DESC)`
+- `milestone_observations`: `(status ASC, observedDate ASC/DESC)`, `(milestoneId ASC, observedDate ASC/DESC)`, `(status ASC, milestoneId ASC, observedDate ASC)`
 
 ---
 

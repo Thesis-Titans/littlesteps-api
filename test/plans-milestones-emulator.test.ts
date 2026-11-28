@@ -1,7 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { getFirestore } from "firebase-admin/firestore";
 import { app } from "../src/app.js";
+import { setCatalogStore } from "../src/catalog/catalog-service.js";
+import { createFirestoreCatalogStore } from "../src/catalog/catalog-store.js";
 
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
 
@@ -29,10 +33,16 @@ async function setup() {
 }
 
 describe("plans and milestones against the Firestore emulator", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     if (!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_HOST) {
       throw new Error("FIREBASE_AUTH_EMULATOR_HOST and FIRESTORE_EMULATOR_HOST must be set. Run through npm run test:emulator.");
     }
+    const seedPath = path.resolve(process.cwd(), "seed/catalog-activities.json");
+    const activities = JSON.parse(fs.readFileSync(seedPath, "utf8")) as Array<{ id: string }>;
+    const act001 = activities.find((item) => item.id === "act-001");
+    if (!act001) throw new Error("Expected act-001 in seed/catalog-activities.json");
+    await getFirestore().collection("catalog_activities").doc("act-001").set(act001);
+    setCatalogStore(createFirestoreCatalogStore());
   });
 
   it("creates a plan with only activityId and scheduledDate, completes it, then undoes it", async () => {

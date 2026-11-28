@@ -63,11 +63,11 @@ All lint errors, typecheck warnings, and failing tests must be resolved before r
 
 ### Synthetic data and emulator isolation
 - **No real data:** Never test against real user accounts, real child information, or production credentials.
-- **Emulator isolation:** Integration tests run against the local Firebase Emulator Suite (`demo-littlesteps`). Test fixtures and tokens are synthetic throwaways.
+- **Emulator isolation:** Integration tests run against the local Firebase Emulator Suite (`demo-littlesteps`). Test fixtures and tokens are synthetic throwaways. For interactive local testing, seed the emulator's `catalog_activities` collection with `npm run seed:catalog:emulator`.
 
 ### Server-side authorization and BOLA prevention
 - Never trust client-supplied UIDs in request bodies or query parameters.
-- Verify Firebase ID tokens server-side using the Firebase Admin SDK and derive identity solely from `req.user.uid`.
+- Verify Firebase ID tokens server-side using the Firebase Admin SDK and derive identity solely from `request.firebaseUser.uid`.
 - Verify server-side ownership before returning, updating, or deleting any child-scoped record. Return `404 RESOURCE_NOT_FOUND` on ownership mismatches to prevent account enumeration.
 
 ### OpenAPI specification synchronization
