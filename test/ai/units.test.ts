@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cleanMaterials } from "../../src/ai/sanitize.js";
-import { rankActivities } from "../../src/ai/fallback.js";
+import { fallbackWhy, rankActivities } from "../../src/ai/fallback.js";
 import { validateOutput } from "../../src/ai/validate-output.js";
-import { buildPrompt } from "../../src/ai/prompt.js";
+import { buildCustomPlayPrompt, buildPrompt } from "../../src/ai/prompt.js";
 import { RecommendationRequestSchema } from "../../src/ai/types.js";
 import { approved } from "./helpers.js";
 
@@ -121,15 +121,60 @@ describe("RecommendationRequestSchema", () => {
   });
 });
 
-describe("validateOutput accents and Filipino terms", () => {
+describe("validateOutput accents, Filipino, and Hiligaynon terms", () => {
   const ids = new Set(["a"]);
   const reply = (why: string) => ({ picks: [{ id: "a", why }] });
-  it.each(["Not a délay.", "Not an ÁDHD.", "Naantala ang pag-unlad.", "May kapansanan siya.", "Dahil sa pagkaantala."])(
+  it.each([
+    "Not a délay.",
+    "Not an ÁDHD.",
+    "Naantala ang pag-unlad.",
+    "May kapansanan siya.",
+    "Dahil sa pagkaantala.",
+    "Naulihi ang pagtubo niya.",
+    "May depekto siya."
+  ])(
     "rejects %s",
     (why) => expect(validateOutput(reply(why), ids, 1)).toBeNull()
   );
-  it("keeps accented Filipino play wording", () => {
+  it("keeps accented Filipino and Hiligaynon play wording", () => {
     expect(validateOutput(reply("Magandang umaga, sabay tayong maglaro ng niño."), ids, 1)).toHaveLength(1);
+    expect(validateOutput(reply("Maayong aga! Magduwa kita upod si Inday sa balay."), ids, 1)).toHaveLength(1);
+  });
+});
+
+describe("Filipino and Hiligaynon recommendation support", () => {
+  it("includes target language instructions in buildPrompt and buildCustomPlayPrompt", () => {
+    const filPrompt = buildPrompt({
+      ageBand: "12-23m", timeMinutes: 15, setting: "indoor", materials: ["baso"], language: "fil", count: 2,
+      candidates: [{ id: "a", title: "Cup Stack", domain: "motor", materials: ["cup"] }]
+    });
+    expect(filPrompt).toContain("Filipino (Tagalog)");
+    expect(filPrompt).toContain("JSON keys and enum values");
+
+    const hilCustom = buildCustomPlayPrompt({
+      ageBand: "12-23m", timeMinutes: 15, setting: "either", safeMaterials: ["baso"],
+      skippedUnsafeMaterials: [], language: "hil", count: 2
+    });
+    expect(hilCustom).toContain("Hiligaynon (Ilonggo)");
+  });
+
+  it("falls back to age-matched items when no activity matches the requested regional language", () => {
+    const items = [
+      approved({ id: "en-act", language: "en", setting: "either", durationMinutes: 10 }),
+      approved({ id: "fil-other-band", ageBand: "48-59m", language: "fil", setting: "either" })
+    ];
+    const picked = rankActivities(
+      items,
+      { ageBand: "12-23m", language: "hil", setting: "indoor", timeMinutes: 20, count: 3 },
+      []
+    );
+    expect(picked.map((i) => i.id)).toEqual(["en-act"]);
+  });
+
+  it("returns localized fallback why messages for en, fil, and hil", () => {
+    expect(fallbackWhy("en")).toContain("fit");
+    expect(fallbackWhy("fil")).toContain("edad");
+    expect(fallbackWhy("hil")).toContain("bata");
   });
 });
 
