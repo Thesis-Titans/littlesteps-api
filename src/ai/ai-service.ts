@@ -2,7 +2,7 @@ import { getApprovedActivities, getCatalogActivityById } from "../catalog/catalo
 import type { CatalogActivity } from "../catalog/types.js";
 import { cleanMaterials, screenMaterialsForSafety } from "./sanitize.js";
 import { buildAdaptPrompt, buildCustomPlayPrompt, buildPrompt, buildStoryPrompt } from "./prompt.js";
-import { filterEligible, rankActivities, FALLBACK_WHY } from "./fallback.js";
+import { filterEligible, rankActivities, fallbackWhy } from "./fallback.js";
 import {
   validateAdaptOutput,
   validateCustomPlayOutput,
@@ -171,7 +171,7 @@ export async function recommend(
             const ranked = rankActivities(approved, request, []);
             return fallbackResponse(
               ranked.map((activity) => ({
-                activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+                activityId: activity.id, title: activity.title, whyPicked: fallbackWhy(request.language), activity
               })),
               undefined,
               allSkippedNote
@@ -234,7 +234,7 @@ export async function recommend(
       const ranked = rankActivities(approved, request, []);
       return fallbackResponse(
         ranked.map((activity) => ({
-          activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+          activityId: activity.id, title: activity.title, whyPicked: fallbackWhy(request.language), activity
         })),
         undefined,
         skippedSafetyNote
@@ -284,7 +284,7 @@ export async function recommend(
   const ranked = rankActivities(approved, request, materials);
   return fallbackResponse(
     ranked.map((activity) => ({
-      activityId: activity.id, title: activity.title, whyPicked: FALLBACK_WHY, activity
+      activityId: activity.id, title: activity.title, whyPicked: fallbackWhy(request.language), activity
     })),
     undefined,
     skippedSafetyNote

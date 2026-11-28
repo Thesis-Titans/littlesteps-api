@@ -9,8 +9,9 @@ export const NON_DIAGNOSTIC_DENYLIST: readonly string[] = [
   "treating", "therapy", "therapist", "clinical", "abnormal", "falling behind", "behind in",
   "developmentally delayed", "developmental concern", "developmental problem", "developmental issue",
   "deficit", "screening score", "red flag", "impair", "disabilit", "syndrome", "milestone",
-  // Filipino terms (Hiligaynon is not covered yet). shortcut: needs review by a Filipino speaker, extend with hil terms.
-  "antala", "naantala", "nagkaantala", "pagkaantala", "kapansanan", "sakit sa pag-iisip"
+  // Filipino and Hiligaynon non-diagnostic terms. Needs ongoing native-speaker review as coverage expands.
+  "antala", "naantala", "nagkaantala", "pagkaantala", "kapansanan", "sakit sa pag-iisip",
+  "naulihi", "pagkaulihi", "balatian sa paminsaron", "depekto"
 ];
 
 // Common Cyrillic/Greek lookalikes folded to Latin. shortcut: small explicit map, extend if new ones show up.
